@@ -15,6 +15,9 @@ const (
 	pathDomainRecords       = "%s/v1/domains/%s/records?limit=%d&offset=%d"
 	pathDomainRecordsByType = "%s/v1/domains/%s/records/%s"
 	pathDomains             = "%s/v1/domains/%s"
+	pathAvailable           = "%s/v1/domains/available"
+	pathAgreements          = "%s/v1/agreements?tlds=%s&privacy=%t"
+	pathDomainPurchase      = "%s/v1/domains/purchase"
 )
 
 // GetDomains fetches the details for the provided domain
@@ -119,4 +122,53 @@ func (c *Client) domainRecordsOfType(t string, records []*DomainRecord) []*Domai
 	}
 
 	return typeRecords
+}
+
+func (c *Client) DomainAvailable(domainNames []string) (bool, error) {
+
+	msg, err := json.Marshal(domainNames)
+	if err != nil {
+		return false, err
+	}
+
+	domainURL := fmt.Sprintf(pathAvailable, c.baseURL)
+	buffer := bytes.NewBuffer(msg)
+
+	req, err := http.NewRequest(http.MethodPost, domainURL, buffer)
+	if err != nil {
+		return false, err
+	}
+	var resp AvailableResp
+	if err := c.execute("", req, &resp); err != nil {
+		return false, err
+	}
+
+	return resp.DomainAvailable[0].Available, nil
+}
+
+// Retrieve the legal agreement(s) required to purchase the specified TLD and add-ons
+func (c *Client) GetAgreement(tld string, privacy bool) ([]*AgreementsResp, error) {
+
+	domainURL := fmt.Sprintf(pathAgreements, c.baseURL, tld, privacy)
+	//buffer := bytes.NewBuffer(msg)
+	req, err := http.NewRequest(http.MethodGet, domainURL, nil)
+	if err != nil {
+		return nil, err
+	}
+
+	resp := make([]*AgreementsResp, 0)
+	if err := c.execute("", req, &resp); err != nil {
+		return nil, err
+	}
+	return resp, nil
+}
+
+func (c *Client) Purchase(domainName string, agreementKey string) (bool, error) {
+
+	return false, nil
+}
+
+// Retrieve the schema to be submitted when registering a Domain for the specified TLD
+func (c *Client) Schema(domainNames []string) (bool, error) {
+	return false, nil
 }

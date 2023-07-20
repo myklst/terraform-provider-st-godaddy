@@ -3,7 +3,7 @@ package main
 
 import (
 	"github.com/hashicorp/terraform-plugin-sdk/v2/plugin"
-	"github.com/n3integration/terraform-provider-godaddy/plugin/godaddy"
+	"terraform-provider-st-godaddy/plugin/godaddy"
 )
 
 var (

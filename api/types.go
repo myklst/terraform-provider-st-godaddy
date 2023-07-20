@@ -110,6 +110,23 @@ type DomainRecord struct {
 	Port     *int   `json:"port,omitempty"`
 }
 
+type DomainAvailable struct {
+	Available  bool   `json:"available"`
+	Domain     string `json:"domain"`
+	Definitive bool   `json:"definitive"`
+}
+
+type AvailableResp struct {
+	DomainAvailable []DomainAvailable `json:"domains"`
+}
+
+type AgreementsResp struct {
+	AgreementKey string `json:"agreementKey"`
+	Content      string `json:"content"`
+	Title        string `json:"title"`
+	Url          string `json:"url"`
+}
+
 // DomainRecordOpt provides support for setting optional parameters
 type DomainRecordOpt func(*DomainRecord) error
 

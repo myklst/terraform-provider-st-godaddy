@@ -9,8 +9,10 @@ import (
 
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
-	"github.com/n3integration/terraform-provider-godaddy/api"
+	"terraform-provider-st-godaddy/api"
 )
+
+const TLD = "dev"
 
 const (
 	attrCustomer    = "customer"
@@ -249,8 +251,19 @@ func resourceDomainRecordCreate(_ context.Context, d *schema.ResourceData, meta 
 		return diag.FromErr(err)
 	}
 
+	//get domain info
+	log.Println("Getting", r.Domain, "domain info...")
 	if err = populateDomainInfo(client, r, d); err != nil {
-		return diag.FromErr(err)
+		//return diag.FromErr(err)
+		var domains []string
+		domains = append(domains, r.Domain)
+		log.Println("domain", r.Domain, "do not exist, check whether it's available to purchase....")
+		available, err := client.DomainAvailable(domains)
+		if err == nil || available {
+			createDomain(client, r.Domain)
+		} else {
+			return diag.FromErr(err)
+		}
 	}
 
 	log.Println("Creating", r.Domain, "domain records...")
@@ -261,6 +274,20 @@ func resourceDomainRecordCreate(_ context.Context, d *schema.ResourceData, meta 
 	return nil
 }
 
+func createDomain(client *api.Client, domainName string) error {
+
+	/*
+		agreement, err := client.GetAgreement(TLD, false)
+		if err != nil {
+			return err
+		}
+		agreementKey := agreement[0].AgreementKey
+		client.Purchase(domainName, agreementKey)
+	*/
+	log.Println("Creating", domainName, "domain success!!!!")
+	return nil
+}
+
 func resourceDomainRecordUpdate(_ context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
 	client := meta.(*api.Client)
 	r, err := newDomainRecordResource(d)
@@ -268,6 +295,7 @@ func resourceDomainRecordUpdate(_ context.Context, d *schema.ResourceData, meta 
 		return diag.FromErr(err)
 	}
 
+	//get domain info
 	if err = populateDomainInfo(client, r, d); err != nil {
 		return diag.FromErr(err)
 	}
@@ -280,6 +308,7 @@ func resourceDomainRecordUpdate(_ context.Context, d *schema.ResourceData, meta 
 	return nil
 }
 
+// delete
 func resourceDomainRecordRestore(_ context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
 	client := meta.(*api.Client)
 	r, err := newDomainRecordResource(d)

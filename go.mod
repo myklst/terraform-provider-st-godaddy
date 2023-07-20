@@ -1,4 +1,4 @@
-module github.com/n3integration/terraform-provider-godaddy
+module terraform-provider-st-godaddy
 
 require (
 	github.com/hashicorp/hcl/v2 v2.9.1 // indirect

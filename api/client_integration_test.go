@@ -5,7 +5,6 @@ package api
 
 import (
 	"fmt"
-	"os"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -14,9 +13,16 @@ import (
 var key, secret, baseURL string
 
 func init() {
-	key = os.Getenv("GODADDY_API_KEY")
-	secret = os.Getenv("GODADDY_API_SECRET")
-	baseURL = "https://api.godaddy.com"
+	/*
+		key = os.Getenv("GODADDY_API_KEY")
+		secret = os.Getenv("GODADDY_API_SECRET")
+		baseURL = "https://api.godaddy.com"
+	*/
+
+	key = "3mM44UdB63ixBA_tSx4tP52257DiFPnjutMU"
+	secret = "P4KptM8XDHWhNoDUMjQiX4"
+	baseURL = "https://api.ote-godaddy.com"
+
 }
 
 func TestInvalidUrl(t *testing.T) {
@@ -31,6 +37,22 @@ func TestAuthFailure(t *testing.T) {
 
 	_, err = client.GetDomainRecords("", "bogus.com")
 	assert.NotNil(t, err)
+}
+
+func TestAvailable(t *testing.T) {
+	client, err := NewClient(baseURL, key, secret)
+	assert.Nil(t, err)
+	assert.NotNil(t, client)
+	var domains []string
+	domains = append(domains, "hohojiang.com")
+	client.domainAvailable(domains)
+}
+
+func TestAgreements(t *testing.T) {
+	client, err := NewClient(baseURL, key, secret)
+	assert.Nil(t, err)
+	assert.NotNil(t, client)
+	client.getAgreement("pl", false)
 }
 
 func TestGetRecords(t *testing.T) {
