@@ -13,7 +13,7 @@ OS := $(shell go env GOOS)
 UNAME_S := $(shell uname -s)
 
 # VERSION := $(shell grep "version=" install.sh | cut -d= -f2)
-VERSION := 2.0.0
+VERSION := 2.2.0
 
 BINARY := "terraform-provider-godaddy_v$(VERSION)"
 
