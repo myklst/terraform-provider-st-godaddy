@@ -72,7 +72,21 @@ provider "godaddy" {
 }
 
 resource "godaddy_domain_record" "gd-fancy-domain" {
-  domain   = "hohojiang.com"
+  domain   = "XXX.com"
+
+  customer = "1234"
+
+  record {
+    name = "www"
+    type = "CNAME"
+    data = "fancy.github.io"
+    ttl = 3600
+  }
+
+  // specify any A records associated with the domain
+  addresses   = ["192.168.1.2", "192.168.1.3"]
+
+  nameservers = ["ns7.domains.com", "ns6.domains.com"]
 
 }
 
