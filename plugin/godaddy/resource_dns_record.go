@@ -7,6 +7,7 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/forease/gotld"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	"terraform-provider-st-godaddy/api"
@@ -275,15 +276,20 @@ func resourceDomainRecordCreate(_ context.Context, d *schema.ResourceData, meta 
 }
 
 func createDomain(client *api.Client, domainName string) error {
+	//extract tld
+	tld, _, err := gotld.GetTld(domainName)
+	agreement, err := client.GetAgreement(tld.Tld, false)
+	if err != nil {
+		return err
+	}
+	//construct agreement keys
+	var agreementKeys []string
+	for _, v := range agreement {
+		agreementKeys = append(agreementKeys, v.AgreementKey)
+	}
 
-	/*
-		agreement, err := client.GetAgreement(TLD, false)
-		if err != nil {
-			return err
-		}
-		agreementKey := agreement[0].AgreementKey
-		client.Purchase(domainName, agreementKey)
-	*/
+	client.Purchase(domainName, agreementKeys, _domainInfo)
+
 	log.Println("Creating", domainName, "domain success!!!!")
 	return nil
 }

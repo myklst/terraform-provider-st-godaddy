@@ -163,7 +163,10 @@ func (c *Client) GetAgreement(tld string, privacy bool) ([]*AgreementsResp, erro
 	return resp, nil
 }
 
-func (c *Client) Purchase(info RegisterDomainInfo) (bool, error) {
+func (c *Client) Purchase(domainName string, keys []string, info RegisterDomainInfo) (bool, error) {
+	info.Domain = domainName
+	info.Consent.AgreementKeys = keys
+
 	msg, err := json.Marshal(info)
 	if err != nil {
 		return false, err

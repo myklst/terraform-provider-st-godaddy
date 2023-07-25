@@ -9,6 +9,8 @@ require (
 	google.golang.org/genproto v0.0.0-20200904004341-0bd0a958aa1d // indirect
 )
 
+require github.com/forease/gotld v0.0.0-20230311102823-dbfa0257a0e6
+
 require (
 	github.com/agext/levenshtein v1.2.2 // indirect
 	github.com/apparentlymart/go-textseg/v13 v13.0.0 // indirect
