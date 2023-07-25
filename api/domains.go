@@ -163,26 +163,26 @@ func (c *Client) GetAgreement(tld string, privacy bool) ([]*AgreementsResp, erro
 	return resp, nil
 }
 
-func (c *Client) Purchase(domainName string, keys []string, info RegisterDomainInfo) (bool, error) {
+func (c *Client) Purchase(domainName string, keys []string, customer string, info RegisterDomainInfo) error {
 	info.Domain = domainName
 	info.Consent.AgreementKeys = keys
 
 	msg, err := json.Marshal(info)
 	if err != nil {
-		return false, err
+		return err
 	}
 	domainURL := fmt.Sprintf(pathDomainPurchase, c.baseURL)
 	buffer := bytes.NewBuffer(msg)
 	req, err := http.NewRequest(http.MethodPost, domainURL, buffer)
 	if err != nil {
-		return false, err
+		return err
 	}
 	var resp RegisterResponse
-	if err := c.execute("", req, &resp); err != nil {
-		return false, err
+	if err := c.execute(customer, req, &resp); err != nil {
+		return err
 	}
 
-	return true, nil
+	return nil
 }
 
 // Retrieve the schema to be submitted when registering a Domain for the specified TLD

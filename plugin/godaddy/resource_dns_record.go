@@ -13,8 +13,6 @@ import (
 	"terraform-provider-st-godaddy/api"
 )
 
-const TLD = "dev"
-
 const (
 	attrCustomer    = "customer"
 	attrDomain      = "domain"
@@ -247,6 +245,8 @@ func resourceDomainRecordRead(_ context.Context, d *schema.ResourceData, meta in
 
 func resourceDomainRecordCreate(_ context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
 	client := meta.(*api.Client)
+	customer := d.Get(attrCustomer).(string)
+
 	r, err := newDomainRecordResource(d)
 	if err != nil {
 		return diag.FromErr(err)
@@ -261,7 +261,7 @@ func resourceDomainRecordCreate(_ context.Context, d *schema.ResourceData, meta 
 		log.Println("domain", r.Domain, "do not exist, check whether it's available to purchase....")
 		available, err := client.DomainAvailable(domains)
 		if err == nil || available {
-			createDomain(client, r.Domain)
+			createDomain(client, customer, r.Domain)
 		} else {
 			return diag.FromErr(err)
 		}
@@ -275,7 +275,7 @@ func resourceDomainRecordCreate(_ context.Context, d *schema.ResourceData, meta 
 	return nil
 }
 
-func createDomain(client *api.Client, domainName string) error {
+func createDomain(client *api.Client, customer string, domainName string) error {
 	//extract tld
 	tld, _, err := gotld.GetTld(domainName)
 	agreement, err := client.GetAgreement(tld.Tld, false)
@@ -288,8 +288,11 @@ func createDomain(client *api.Client, domainName string) error {
 		agreementKeys = append(agreementKeys, v.AgreementKey)
 	}
 
-	client.Purchase(domainName, agreementKeys, _domainInfo)
-
+	err = client.Purchase(domainName, agreementKeys, customer, _domainInfo)
+	if err != nil {
+		log.Println("Creating", domainName, "domain failed!!!!")
+		return err
+	}
 	log.Println("Creating", domainName, "domain success!!!!")
 	return nil
 }
