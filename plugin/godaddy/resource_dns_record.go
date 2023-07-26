@@ -255,13 +255,16 @@ func resourceDomainRecordCreate(_ context.Context, d *schema.ResourceData, meta 
 	//get domain info
 	log.Println("Getting", r.Domain, "domain info...")
 	if err = populateDomainInfo(client, r, d); err != nil {
-		//return diag.FromErr(err)
+		//domain does not exist, try to register
 		var domains []string
 		domains = append(domains, r.Domain)
 		log.Println("domain", r.Domain, "do not exist, check whether it's available to purchase....")
 		available, err := client.DomainAvailable(domains)
 		if err == nil || available {
-			createDomain(client, customer, r.Domain)
+			diags := createDomain(client, customer, r.Domain)
+			if diags.HasError() {
+				return diags
+			}
 		} else {
 			return diag.FromErr(err)
 		}
@@ -275,12 +278,12 @@ func resourceDomainRecordCreate(_ context.Context, d *schema.ResourceData, meta 
 	return nil
 }
 
-func createDomain(client *api.Client, customer string, domainName string) error {
+func createDomain(client *api.Client, customer string, domainName string) diag.Diagnostics {
 	//extract tld
 	tld, _, err := gotld.GetTld(domainName)
 	agreement, err := client.GetAgreement(tld.Tld, false)
 	if err != nil {
-		return err
+		return diag.FromErr(err)
 	}
 	//construct agreement keys
 	var agreementKeys []string
@@ -291,7 +294,7 @@ func createDomain(client *api.Client, customer string, domainName string) error 
 	err = client.Purchase(domainName, agreementKeys, customer, _domainInfo)
 	if err != nil {
 		log.Println("Creating", domainName, "domain failed!!!!")
-		return err
+		return diag.FromErr(err)
 	}
 	log.Println("Creating", domainName, "domain success!!!!")
 	return nil
