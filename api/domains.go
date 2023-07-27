@@ -7,10 +7,13 @@ import (
 	"log"
 	"net/http"
 	"strings"
+	"time"
 )
 
 const (
 	defaultLimit = 500
+	period       = 1
+	autoRenew    = false
 
 	pathDomainRecords       = "%s/v1/domains/%s/records?limit=%d&offset=%d"
 	pathDomainRecordsByType = "%s/v1/domains/%s/records/%s"
@@ -166,6 +169,12 @@ func (c *Client) GetAgreement(tld string, privacy bool) ([]*AgreementsResp, erro
 func (c *Client) Purchase(domainName string, keys []string, customer string, info RegisterDomainInfo) error {
 	info.Domain = domainName
 	info.Consent.AgreementKeys = keys
+	info.Consent.AgreedAt = time.Now().String()
+	info.Consent.AgreedBy = info.ContactAdmin.NameFirst + " " + info.ContactAdmin.NameLast
+
+	info.Period = period
+	info.RenewAuto = autoRenew
+	info.Privacy = false
 
 	msg, err := json.Marshal(info)
 	if err != nil {
