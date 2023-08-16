@@ -130,11 +130,15 @@ type AgreementsResp struct {
 // DomainRecordOpt provides support for setting optional parameters
 type DomainRecordOpt func(*DomainRecord) error
 
-type RegisterResponse struct {
+type DomainPurchaseResponse struct {
 	Currency  string `json:"currency"`
 	ItemCount int    `json:"itemCount"`
 	OrderId   int    `json:"orderId"`
 	Total     int    `json:"total"`
+}
+
+type DomainRenew struct {
+	Period int `json:"period"`
 }
 
 type RegisterDomainInfo struct {

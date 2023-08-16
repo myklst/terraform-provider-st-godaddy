@@ -21,6 +21,7 @@ const (
 	pathAvailable           = "%s/v1/domains/available"
 	pathAgreements          = "%s/v1/agreements?tlds=%s&privacy=%t"
 	pathDomainPurchase      = "%s/v1/domains/purchase"
+	pathDomainRenew         = "%s/v1/domains/%s/renew"
 )
 
 // GetDomains fetches the details for the provided domain
@@ -167,27 +168,70 @@ func (c *Client) GetAgreement(tld string, privacy bool) ([]*AgreementsResp, erro
 }
 
 func (c *Client) Purchase(domainName string, keys []string, customer string, info RegisterDomainInfo) error {
+	//url
+	domainURL := fmt.Sprintf(pathDomainPurchase, c.baseURL)
+
+	//request
 	info.Domain = domainName
 	info.Consent.AgreementKeys = keys
 	info.Consent.AgreedAt = time.Now().String()
 	info.Consent.AgreedBy = info.ContactAdmin.NameFirst + " " + info.ContactAdmin.NameLast
-
 	info.Period = period
 	info.RenewAuto = autoRenew
 	info.Privacy = false
-
 	msg, err := json.Marshal(info)
 	if err != nil {
 		return err
 	}
-	domainURL := fmt.Sprintf(pathDomainPurchase, c.baseURL)
 	buffer := bytes.NewBuffer(msg)
 	req, err := http.NewRequest(http.MethodPost, domainURL, buffer)
 	if err != nil {
 		return err
 	}
-	var resp RegisterResponse
+	//response
+	var resp DomainPurchaseResponse
 	if err := c.execute(customer, req, &resp); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (c *Client) DomainRenew(customerID, domain string, period int) error {
+	//url
+	domainURL := fmt.Sprintf(pathDomainRenew, c.baseURL, domain)
+	//request
+	var info DomainRenew
+	info.Period = period
+	msg, err := json.Marshal(info)
+	if err != nil {
+		return err
+	}
+	buffer := bytes.NewBuffer(msg)
+	req, err := http.NewRequest(http.MethodPost, domainURL, buffer)
+	if err != nil {
+		return err
+	}
+	//response
+	var resp DomainPurchaseResponse
+	//do request
+	if err := c.execute(customerID, req, &resp); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (c *Client) DomainCancel(customerID, domain string) error {
+	//url
+	domainURL := fmt.Sprintf(pathDomains, c.baseURL, domain)
+	//request
+	req, err := http.NewRequest(http.MethodDelete, domainURL, nil)
+	if err != nil {
+		return err
+	}
+	//do request
+	if err := c.execute(customerID, req, nil); err != nil {
 		return err
 	}
 

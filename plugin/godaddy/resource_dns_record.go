@@ -7,7 +7,6 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/forease/gotld"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	"terraform-provider-st-godaddy/api"
@@ -243,9 +242,8 @@ func resourceDomainRecordRead(_ context.Context, d *schema.ResourceData, meta in
 	return nil
 }
 
-func resourceDomainRecordCreate(_ context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
+func resourceDomainRecordCreate(cxt context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
 	client := meta.(*api.Client)
-	customer := d.Get(attrCustomer).(string)
 
 	r, err := newDomainRecordResource(d)
 	if err != nil {
@@ -255,19 +253,7 @@ func resourceDomainRecordCreate(_ context.Context, d *schema.ResourceData, meta 
 	//get domain info
 	log.Println("Getting", r.Domain, "domain info...")
 	if err = populateDomainInfo(client, r, d); err != nil {
-		//domain does not exist, try to register
-		var domains []string
-		domains = append(domains, r.Domain)
-		log.Println("domain", r.Domain, "do not exist, check whether it's available to purchase....")
-		available, err := client.DomainAvailable(domains)
-		if err == nil || available {
-			diags := createDomain(client, customer, r.Domain)
-			if diags.HasError() {
-				return diags
-			}
-		} else {
-			return diag.FromErr(err)
-		}
+		return diag.FromErr(err)
 	}
 
 	log.Println("Creating", r.Domain, "domain records...")
@@ -275,28 +261,6 @@ func resourceDomainRecordCreate(_ context.Context, d *schema.ResourceData, meta 
 	if err := client.UpdateDomainRecords(r.Customer, r.Domain, r.Records); err != nil {
 		return diag.FromErr(err)
 	}
-	return nil
-}
-
-func createDomain(client *api.Client, customer string, domainName string) diag.Diagnostics {
-	//extract tld
-	tld, _, err := gotld.GetTld(domainName)
-	agreement, err := client.GetAgreement(tld.Tld, false)
-	if err != nil {
-		return diag.FromErr(err)
-	}
-	//construct agreement keys
-	var agreementKeys []string
-	for _, v := range agreement {
-		agreementKeys = append(agreementKeys, v.AgreementKey)
-	}
-
-	err = client.Purchase(domainName, agreementKeys, customer, _domainInfo)
-	if err != nil {
-		log.Println("Creating", domainName, "domain failed!!!!")
-		return diag.FromErr(err)
-	}
-	log.Println("Creating", domainName, "domain success!!!!")
 	return nil
 }
 
