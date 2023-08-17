@@ -42,7 +42,7 @@ func (c *Client) GetDomains(customerID string) ([]Domain, error) {
 }
 
 // GetDomain fetches the details for the provided domain
-func (c *Client) GetDomain(customerID, domain string) (*Domain, error) {
+func (c *Client) GetDomain(domain string) (*Domain, error) {
 	domainURL := fmt.Sprintf(pathDomains, c.baseURL, domain)
 	req, err := http.NewRequest(http.MethodGet, domainURL, nil)
 
@@ -51,7 +51,7 @@ func (c *Client) GetDomain(customerID, domain string) (*Domain, error) {
 	}
 
 	d := new(Domain)
-	if err := c.execute(customerID, req, &d); err != nil {
+	if err := c.execute("", req, &d); err != nil {
 		return nil, err
 	}
 
@@ -59,7 +59,7 @@ func (c *Client) GetDomain(customerID, domain string) (*Domain, error) {
 }
 
 // GetDomainRecords fetches all existing records for the provided domain
-func (c *Client) GetDomainRecords(customerID, domain string) ([]*DomainRecord, error) {
+func (c *Client) GetDomainRecords(domain string) ([]*DomainRecord, error) {
 	offset := 1
 	records := make([]*DomainRecord, 0)
 	for {
@@ -71,7 +71,7 @@ func (c *Client) GetDomainRecords(customerID, domain string) ([]*DomainRecord, e
 			return nil, err
 		}
 
-		if err := c.execute(customerID, req, &page); err != nil {
+		if err := c.execute("", req, &page); err != nil {
 			return nil, err
 		}
 		if len(page) == 0 {
@@ -167,7 +167,7 @@ func (c *Client) GetAgreement(tld string, privacy bool) ([]*AgreementsResp, erro
 	return resp, nil
 }
 
-func (c *Client) Purchase(domainName string, keys []string, customer string, info RegisterDomainInfo) error {
+func (c *Client) Purchase(domainName string, keys []string, info RegisterDomainInfo) error {
 	//url
 	domainURL := fmt.Sprintf(pathDomainPurchase, c.baseURL)
 
@@ -190,14 +190,14 @@ func (c *Client) Purchase(domainName string, keys []string, customer string, inf
 	}
 	//response
 	var resp DomainPurchaseResponse
-	if err := c.execute(customer, req, &resp); err != nil {
+	if err := c.execute("", req, &resp); err != nil {
 		return err
 	}
 
 	return nil
 }
 
-func (c *Client) DomainRenew(customerID, domain string, period int) error {
+func (c *Client) DomainRenew(domain string, period int) error {
 	//url
 	domainURL := fmt.Sprintf(pathDomainRenew, c.baseURL, domain)
 	//request
@@ -215,14 +215,14 @@ func (c *Client) DomainRenew(customerID, domain string, period int) error {
 	//response
 	var resp DomainPurchaseResponse
 	//do request
-	if err := c.execute(customerID, req, &resp); err != nil {
+	if err := c.execute("", req, &resp); err != nil {
 		return err
 	}
 
 	return nil
 }
 
-func (c *Client) DomainCancel(customerID, domain string) error {
+func (c *Client) DomainCancel(domain string) error {
 	//url
 	domainURL := fmt.Sprintf(pathDomains, c.baseURL, domain)
 	//request
@@ -231,7 +231,7 @@ func (c *Client) DomainCancel(customerID, domain string) error {
 		return err
 	}
 	//do request
-	if err := c.execute(customerID, req, nil); err != nil {
+	if err := c.execute("", req, nil); err != nil {
 		return err
 	}
 

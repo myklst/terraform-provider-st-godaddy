@@ -13,7 +13,6 @@ import (
 )
 
 const (
-	attrCustomer    = "customer"
 	attrDomain      = "domain"
 	attrRecord      = "record"
 	attrAddresses   = "addresses"
@@ -49,10 +48,6 @@ func newDomainRecordResource(d *schema.ResourceData) (*domainRecordResource, err
 	var err error
 	r := &domainRecordResource{}
 	nsCount := 0
-
-	if attr, ok := d.GetOk(attrCustomer); ok {
-		r.Customer = attr.(string)
-	}
 
 	if attr, ok := d.GetOk(attrDomain); ok {
 		r.Domain = attr.(string)
@@ -149,10 +144,7 @@ func resourceDomainRecord() *schema.Resource {
 				Optional: true,
 				Elem:     &schema.Schema{Type: schema.TypeString},
 			},
-			attrCustomer: {
-				Type:     schema.TypeString,
-				Optional: true,
-			},
+
 			attrNameservers: {
 				Type:     schema.TypeList,
 				Optional: true,
@@ -212,7 +204,7 @@ func resourceDomainRecord() *schema.Resource {
 
 func resourceDomainRecordRead(_ context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
 	client := meta.(*api.Client)
-	customer := d.Get(attrCustomer).(string)
+	//customer := d.Get(attrCustomer).(string)
 	domain := d.Get(attrDomain).(string)
 	r, err := newDomainRecordResource(d)
 	if err != nil {
@@ -226,7 +218,7 @@ func resourceDomainRecordRead(_ context.Context, d *schema.ResourceData, meta in
 	}
 
 	log.Println("Fetching", domain, "records...")
-	records, err := client.GetDomainRecords(customer, domain)
+	records, err := client.GetDomainRecords(domain)
 	if err != nil {
 		return diag.FromErr(fmt.Errorf("couldn't find domain record (%s): %s", domain, err.Error()))
 	}
@@ -308,7 +300,7 @@ func populateDomainInfo(client *api.Client, r *domainRecordResource, d *schema.R
 	var domain *api.Domain
 
 	log.Println("Fetching", r.Domain, "info...")
-	domain, err = client.GetDomain(r.Customer, r.Domain)
+	domain, err = client.GetDomain(r.Domain)
 	if err != nil {
 		return fmt.Errorf("couldn't find domain (%s): %s", r.Domain, err.Error())
 	}

@@ -72,11 +72,16 @@ provider "godaddy" {
 
 }
 
-resource "godaddy_domain_record" "gd-fancy-domain" {
+
+resource "godaddy_domain" "gd-fancy-domain" {
   domain   = "test-domain.com"
 
-  customer = "1234"
+}
 
+
+resource "godaddy_domain_record" "gd-fancy-domain-record" {
+
+  domain   = "test-domain.com"
 
   record {
     name = "www"

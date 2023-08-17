@@ -39,15 +39,11 @@ func resourceDomain() *schema.Resource {
 				ValidateFunc: validation.StringIsNotEmpty,
 				Description:  "Purchased available domain name on your account",
 			},
-			attrCustomer: {
-				Type:     schema.TypeString,
-				Optional: true,
-			},
 			attrMode: {
 				Type:        schema.TypeString,
 				Optional:    true,
 				Description: "domain operation type, include create, renew",
-				DefaultFunc: schema.EnvDefaultFunc("NAMECHEAP_MODE", "CREATE"),
+				DefaultFunc: schema.EnvDefaultFunc("GODADDY_MODE", "create"),
 			},
 			attrYears: {
 				Type:        schema.TypeString,
@@ -77,17 +73,16 @@ func resourceDomainCreate(ctx context.Context, data *schema.ResourceData, meta i
 
 	domain := strings.ToLower(data.Get(attrDomain).(string))
 	mode := strings.ToLower(data.Get(attrMode).(string))
-	customer := strings.ToLower(data.Get(attrCustomer).(string))
 	years := data.Get(attrYears).(int)
 
 	switch mode {
 	case MODE_CREATE:
-		diags := createDomain(ctx, client, customer, domain, years)
+		diags := createDomain(ctx, client, domain, years)
 		if diags.HasError() {
 			return diags
 		}
 	case MODE_RENEW:
-		diags := renewDomain(ctx, client, customer, domain, years)
+		diags := renewDomain(ctx, client, domain, years)
 		if diags.HasError() {
 			return diags
 		}
@@ -106,9 +101,8 @@ func resourceDomainRead(ctx context.Context, data *schema.ResourceData, meta int
 	client := meta.(*api.Client)
 
 	domainName := strings.ToLower(data.Get(attrDomain).(string))
-	customer := strings.ToLower(data.Get(attrCustomer).(string))
 
-	_, err := client.GetDomain(customer, domainName)
+	_, err := client.GetDomain(domainName)
 
 	if err == nil {
 		_ = data.Set("domain", domainName)
@@ -121,8 +115,6 @@ func resourceDomainUpdate(ctx context.Context, data *schema.ResourceData, meta i
 
 	fmtlog(ctx, "[resourceRecordUpdate!]")
 	client := meta.(*api.Client)
-
-	customer := strings.ToLower(data.Get(attrCustomer).(string))
 
 	//we can do nothing on old name,year and mode
 	oldDomainRaw, newDomainRaw := data.GetChange("domain")
@@ -138,20 +130,20 @@ func resourceDomainUpdate(ctx context.Context, data *schema.ResourceData, meta i
 	switch newMode {
 	case MODE_CREATE:
 		//delete old domain first
-		diags := deleteDomain(ctx, client, customer, oldDomain)
+		diags := deleteDomain(ctx, client, oldDomain)
 		if diags.HasError() {
 			return diags
 		}
 
 		//create new domain then
-		diags = createDomain(ctx, client, customer, newDomain, newYear)
+		diags = createDomain(ctx, client, newDomain, newYear)
 		if diags.HasError() {
 			return diags
 		}
 
 	case MODE_RENEW:
 		//can't do anything about old domain
-		diags := renewDomain(ctx, client, customer, newDomain, newYear)
+		diags := renewDomain(ctx, client, newDomain, newYear)
 		if diags.HasError() {
 			return diags
 		}
@@ -167,9 +159,8 @@ func resourceDomainDelete(ctx context.Context, data *schema.ResourceData, meta i
 	fmtlog(ctx, "[resourceRecordDelete!]")
 	client := meta.(*api.Client)
 	domainName := strings.ToLower(data.Get(attrDomain).(string))
-	customer := strings.ToLower(data.Get(attrCustomer).(string))
 
-	diags := deleteDomain(ctx, client, customer, domainName)
+	diags := deleteDomain(ctx, client, domainName)
 	if diags.HasError() {
 		return diags
 	}
@@ -177,7 +168,7 @@ func resourceDomainDelete(ctx context.Context, data *schema.ResourceData, meta i
 	return nil
 }
 
-func createDomain(cxt context.Context, client *api.Client, customer string, domainName string, year int) diag.Diagnostics {
+func createDomain(cxt context.Context, client *api.Client, domainName string, year int) diag.Diagnostics {
 
 	var domains []string
 	domains = append(domains, domainName)
@@ -202,7 +193,7 @@ func createDomain(cxt context.Context, client *api.Client, customer string, doma
 		agreementKeys = append(agreementKeys, v.AgreementKey)
 	}
 
-	err = client.Purchase(domainName, agreementKeys, customer, _domainInfo)
+	err = client.Purchase(domainName, agreementKeys, _domainInfo)
 	_domainInfo.Period = year
 	if err != nil {
 		fmtlog(cxt, "Creating [%s] failed!", domainName)
@@ -212,9 +203,9 @@ func createDomain(cxt context.Context, client *api.Client, customer string, doma
 	return nil
 }
 
-func renewDomain(cxt context.Context, client *api.Client, customer string, domainName string, year int) diag.Diagnostics {
+func renewDomain(cxt context.Context, client *api.Client, domainName string, year int) diag.Diagnostics {
 
-	err := client.DomainRenew(customer, domainName, year)
+	err := client.DomainRenew(domainName, year)
 	if err != nil {
 		fmtlog(cxt, "Renew [%s] failed!", domainName)
 		return diag.FromErr(err)
@@ -223,9 +214,9 @@ func renewDomain(cxt context.Context, client *api.Client, customer string, domai
 	return nil
 }
 
-func deleteDomain(cxt context.Context, client *api.Client, customer string, domainName string) diag.Diagnostics {
+func deleteDomain(cxt context.Context, client *api.Client, domainName string) diag.Diagnostics {
 
-	err := client.DomainCancel(customer, domainName)
+	err := client.DomainCancel(domainName)
 	if err != nil {
 		fmtlog(cxt, "Delete [%s] failed!", domainName)
 		return diag.FromErr(err)
