@@ -141,89 +141,40 @@ type DomainRenew struct {
 	Period int `json:"period"`
 }
 
+type Contact struct {
+	AddressMailing struct {
+		Address1   string `json:"address1"`
+		Address2   string `json:"address2"`
+		City       string `json:"city"`
+		Country    string `json:"country"`
+		PostalCode string `json:"postalCode"`
+		State      string `json:"state"`
+	} `json:"addressMailing"`
+	Email        string `json:"email"`
+	Fax          string `json:"fax"`
+	JobTitle     string `json:"jobTitle"`
+	NameFirst    string `json:"nameFirst"`
+	NameLast     string `json:"nameLast"`
+	NameMiddle   string `json:"nameMiddle"`
+	Organization string `json:"organization"`
+	Phone        string `json:"phone"`
+}
+
 type RegisterDomainInfo struct {
 	Consent struct {
 		AgreedAt      string   `json:"agreedAt"`
 		AgreedBy      string   `json:"agreedBy"`
 		AgreementKeys []string `json:"agreementKeys"`
 	} `json:"consent"`
-	ContactAdmin struct {
-		AddressMailing struct {
-			Address1   string `json:"address1"`
-			Address2   string `json:"address2"`
-			City       string `json:"city"`
-			Country    string `json:"country"`
-			PostalCode string `json:"postalCode"`
-			State      string `json:"state"`
-		} `json:"addressMailing"`
-		Email        string `json:"email"`
-		Fax          string `json:"fax"`
-		JobTitle     string `json:"jobTitle"`
-		NameFirst    string `json:"nameFirst"`
-		NameLast     string `json:"nameLast"`
-		NameMiddle   string `json:"nameMiddle"`
-		Organization string `json:"organization"`
-		Phone        string `json:"phone"`
-	} `json:"contactAdmin"`
-	ContactBilling struct {
-		AddressMailing struct {
-			Address1   string `json:"address1"`
-			Address2   string `json:"address2"`
-			City       string `json:"city"`
-			Country    string `json:"country"`
-			PostalCode string `json:"postalCode"`
-			State      string `json:"state"`
-		} `json:"addressMailing"`
-		Email        string `json:"email"`
-		Fax          string `json:"fax"`
-		JobTitle     string `json:"jobTitle"`
-		NameFirst    string `json:"nameFirst"`
-		NameLast     string `json:"nameLast"`
-		NameMiddle   string `json:"nameMiddle"`
-		Organization string `json:"organization"`
-		Phone        string `json:"phone"`
-	} `json:"contactBilling"`
-	ContactRegistrant struct {
-		AddressMailing struct {
-			Address1   string `json:"address1"`
-			Address2   string `json:"address2"`
-			City       string `json:"city"`
-			Country    string `json:"country"`
-			PostalCode string `json:"postalCode"`
-			State      string `json:"state"`
-		} `json:"addressMailing"`
-		Email        string `json:"email"`
-		Fax          string `json:"fax"`
-		JobTitle     string `json:"jobTitle"`
-		NameFirst    string `json:"nameFirst"`
-		NameLast     string `json:"nameLast"`
-		NameMiddle   string `json:"nameMiddle"`
-		Organization string `json:"organization"`
-		Phone        string `json:"phone"`
-	} `json:"contactRegistrant"`
-	ContactTech struct {
-		AddressMailing struct {
-			Address1   string `json:"address1"`
-			Address2   string `json:"address2"`
-			City       string `json:"city"`
-			Country    string `json:"country"`
-			PostalCode string `json:"postalCode"`
-			State      string `json:"state"`
-		} `json:"addressMailing"`
-		Email        string `json:"email"`
-		Fax          string `json:"fax"`
-		JobTitle     string `json:"jobTitle"`
-		NameFirst    string `json:"nameFirst"`
-		NameLast     string `json:"nameLast"`
-		NameMiddle   string `json:"nameMiddle"`
-		Organization string `json:"organization"`
-		Phone        string `json:"phone"`
-	} `json:"contactTech"`
-	Domain      string   `json:"domain"`
-	NameServers []string `json:"nameServers"`
-	Period      int      `json:"period"`
-	Privacy     bool     `json:"privacy"`
-	RenewAuto   bool     `json:"renewAuto"`
+	ContactAdmin      Contact  `json:"contactAdmin"`
+	ContactBilling    Contact  `json:"contactBilling"`
+	ContactRegistrant Contact  `json:"contactRegistrant"`
+	ContactTech       Contact  `json:"contactTech"`
+	Domain            string   `json:"domain"`
+	NameServers       []string `json:"nameServers"`
+	Period            int      `json:"period"`
+	Privacy           bool     `json:"privacy"`
+	RenewAuto         bool     `json:"renewAuto"`
 }
 
 // NewDomainRecord validates and constructs a DomainRecord, if valid.

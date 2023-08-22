@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"strconv"
 	"strings"
 	"time"
 )
@@ -167,7 +168,7 @@ func (c *Client) GetAgreement(tld string, privacy bool) ([]*AgreementsResp, erro
 	return resp, nil
 }
 
-func (c *Client) Purchase(domainName string, keys []string, info RegisterDomainInfo) error {
+func (c *Client) Purchase(domainName string, keys []string, info RegisterDomainInfo, years string) error {
 	//url
 	domainURL := fmt.Sprintf(pathDomainPurchase, c.baseURL)
 
@@ -176,7 +177,9 @@ func (c *Client) Purchase(domainName string, keys []string, info RegisterDomainI
 	info.Consent.AgreementKeys = keys
 	info.Consent.AgreedAt = time.Now().String()
 	info.Consent.AgreedBy = info.ContactAdmin.NameFirst + " " + info.ContactAdmin.NameLast
-	info.Period = period
+
+	n, err := strconv.Atoi(years)
+	info.Period = n
 	info.RenewAuto = autoRenew
 	info.Privacy = false
 	msg, err := json.Marshal(info)
@@ -197,12 +200,13 @@ func (c *Client) Purchase(domainName string, keys []string, info RegisterDomainI
 	return nil
 }
 
-func (c *Client) DomainRenew(domain string, period int) error {
+func (c *Client) DomainRenew(domain string, years string) error {
 	//url
 	domainURL := fmt.Sprintf(pathDomainRenew, c.baseURL, domain)
 	//request
+	n, err := strconv.Atoi(years)
 	var info DomainRenew
-	info.Period = period
+	info.Period = n
 	msg, err := json.Marshal(info)
 	if err != nil {
 		return err

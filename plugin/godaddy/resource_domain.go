@@ -1,15 +1,18 @@
-package godaddy
+package godaddy_provider
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"github.com/forease/gotld"
+	"github.com/hashicorp/terraform-plugin-framework/diag"
+	"github.com/hashicorp/terraform-plugin-framework/path"
+	"github.com/hashicorp/terraform-plugin-framework/resource"
+	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
+	"github.com/hashicorp/terraform-plugin-framework/types"
 	"github.com/hashicorp/terraform-plugin-log/tflog"
-	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
-	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
-	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/validation"
 	"log"
-	"strings"
+	"strconv"
 	"terraform-provider-st-godaddy/api"
 )
 
@@ -20,172 +23,245 @@ const (
 const MODE_CREATE = "create"
 const MODE_RENEW = "renew"
 
-func resourceDomain() *schema.Resource {
-	return &schema.Resource{
-		CreateContext: resourceDomainCreate,
-		UpdateContext: resourceDomainUpdate,
-		ReadContext:   resourceDomainRead,
-		DeleteContext: resourceDomainDelete,
+func NewGodaddyDomainResource() resource.Resource {
+	return &godaddyDomainResource{}
+}
 
-		Importer: &schema.ResourceImporter{
-			StateContext: resourceDomainImport,
-		},
+type godaddyDomainResource struct {
+	client *api.Client
+}
 
-		Schema: map[string]*schema.Schema{
-			attrDomain: {
-				Type:         schema.TypeString,
-				Required:     true,
-				ForceNew:     false,
-				ValidateFunc: validation.StringIsNotEmpty,
-				Description:  "Purchased available domain name on your account",
+type godaddyDomainResourceModel struct {
+	Domain  types.String `tfsdk:"domain"`
+	Mode    types.String `tfsdk:"mode"`
+	Years   types.Int64  `tfsdk:"years"`
+	Contact types.String `tfsdk:"contact"`
+}
+
+// Metadata returns the resource godaddy_domain type name.
+func (r *godaddyDomainResource) Metadata(_ context.Context, req resource.MetadataRequest, resp *resource.MetadataResponse) {
+	resp.TypeName = "godaddy_domain"
+}
+
+// Configure adds the provider configured client to the resource.
+func (r *godaddyDomainResource) Configure(_ context.Context, req resource.ConfigureRequest, _ *resource.ConfigureResponse) {
+	if req.ProviderData == nil {
+		return
+	}
+	r.client = req.ProviderData.(*api.Client)
+}
+
+func (r *godaddyDomainResource) ImportState(ctx context.Context, req resource.ImportStateRequest, resp *resource.ImportStateResponse) {
+	// Retrieve import RecordId and save to id attribute
+	resource.ImportStatePassthroughID(ctx, path.Root("domain"), req, resp)
+}
+
+// Schema defines the schema for the godaddy_domain resource.
+func (r *godaddyDomainResource) Schema(_ context.Context, _ resource.SchemaRequest, resp *resource.SchemaResponse) {
+	resp.Schema = schema.Schema{
+		Description: "Provides a godaddy_domain resource.",
+		Attributes: map[string]schema.Attribute{
+			"domain": schema.StringAttribute{
+				Description: "Purchased available domain name on your account",
+				Required:    true,
 			},
-			attrMode: {
-				Type:        schema.TypeString,
-				Optional:    true,
-				Description: "domain operation type, include create, renew",
-				DefaultFunc: schema.EnvDefaultFunc("GODADDY_MODE", "create"),
+			"mode": schema.StringAttribute{
+				Description: "domain operation type, include create, renew.",
+				Required:    true,
 			},
-			attrYears: {
-				Type:        schema.TypeString,
-				Optional:    true,
+			"years": schema.Int64Attribute{
 				Description: "Number of years to register",
-				Default:     "2",
+				Required:    true,
+			},
+			"contact": schema.StringAttribute{
+				Description: "Contact info in json format",
+				Required:    true,
 			},
 		},
 	}
 }
 
-func resourceDomainImport(ctx context.Context, data *schema.ResourceData, meta interface{}) ([]*schema.ResourceData, error) {
-	fmtlog(ctx, "[resourceRecordImport!]")
-	if err := data.Set("domain", data.Id()); err != nil {
-		return nil, err
-	}
-	if err := data.Set("mode", MODE_CREATE); err != nil {
-		return nil, err
-	}
+// Create a new godaddy_domain resource
+func (r *godaddyDomainResource) Create(ctx context.Context, req resource.CreateRequest, resp *resource.CreateResponse) {
 
-	return []*schema.ResourceData{data}, nil
-}
-
-func resourceDomainCreate(ctx context.Context, data *schema.ResourceData, meta interface{}) diag.Diagnostics {
 	fmtlog(ctx, "[resourceDomainCreate!]")
-	client := meta.(*api.Client)
+	var plan *godaddyDomainResourceModel
+	getPlanDiags := req.Plan.Get(ctx, &plan)
+	resp.Diagnostics.Append(getPlanDiags...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
 
-	domain := strings.ToLower(data.Get(attrDomain).(string))
-	mode := strings.ToLower(data.Get(attrMode).(string))
-	years := data.Get(attrYears).(int)
+	domain := plan.Domain.ValueString()
+	mode := plan.Mode.ValueString()
+	years := plan.Years.ValueInt64()
+	contact := plan.Contact.ValueString()
 
 	switch mode {
 	case MODE_CREATE:
-		diags := createDomain(ctx, client, domain, years)
-		if diags.HasError() {
-			return diags
+		var contactInfo api.RegisterDomainInfo
+		diag1 := readContactInfo(contact, &contactInfo)
+		resp.Diagnostics.Append(diag1)
+		if resp.Diagnostics.HasError() {
+			return
+		}
+		diag2 := createDomain(ctx, r.client, domain, years, contactInfo)
+		resp.Diagnostics.Append(diag2)
+		if resp.Diagnostics.HasError() {
+			return
 		}
 	case MODE_RENEW:
-		diags := renewDomain(ctx, client, domain, years)
-		if diags.HasError() {
-			return diags
+		diag := renewDomain(ctx, r.client, domain, years)
+		resp.Diagnostics.Append(diag)
+		if resp.Diagnostics.HasError() {
+			return
 		}
 	default:
-		return diag.Errorf("unsupported mode:%s, mode can only be create or renew", mode)
+		resp.Diagnostics.AddError("invalid mode value", mode)
 	}
 
-	data.SetId(domain)
+	// Set state items
+	state := &godaddyDomainResourceModel{}
+	state.Mode = plan.Mode
+	state.Domain = plan.Domain
+	state.Years = plan.Years
 
-	return nil
+	setStateDiags := resp.State.Set(ctx, state)
+	resp.Diagnostics.Append(setStateDiags...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+
 }
 
-func resourceDomainRead(ctx context.Context, data *schema.ResourceData, meta interface{}) diag.Diagnostics {
-
+// Read godaddy_domain resource information
+func (r *godaddyDomainResource) Read(ctx context.Context, req resource.ReadRequest, resp *resource.ReadResponse) {
 	fmtlog(ctx, "[resourceDomainRead!]")
-	client := meta.(*api.Client)
 
-	domainName := strings.ToLower(data.Get(attrDomain).(string))
+	var state *godaddyDomainResourceModel
+	getStateDiags := req.State.Get(ctx, &state)
+	resp.Diagnostics.Append(getStateDiags...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
 
-	_, err := client.GetDomain(domainName)
+	domain := state.Domain.ValueString()
+
+	_, err := r.client.GetDomain(domain)
 
 	if err == nil {
-		_ = data.Set("domain", domainName)
+		setStateDiags := resp.State.Set(ctx, state)
+		resp.Diagnostics.Append(setStateDiags...)
+		if resp.Diagnostics.HasError() {
+			return
+		}
 	}
-
-	return nil
 }
 
-func resourceDomainUpdate(ctx context.Context, data *schema.ResourceData, meta interface{}) diag.Diagnostics {
-
+// Update godaddy_domain resource and sets the updated Terraform state on success.
+func (r *godaddyDomainResource) Update(ctx context.Context, req resource.UpdateRequest, resp *resource.UpdateResponse) {
 	fmtlog(ctx, "[resourceRecordUpdate!]")
-	client := meta.(*api.Client)
 
-	//we can do nothing on old name,year and mode
-	oldDomainRaw, newDomainRaw := data.GetChange("domain")
-	newDomain := newDomainRaw.(string)
-	oldDomain := oldDomainRaw.(string)
+	var plan *godaddyDomainResourceModel
+	getPlanDiags := req.Plan.Get(ctx, &plan)
+	resp.Diagnostics.Append(getPlanDiags...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
 
-	_, newYearRaw := data.GetChange("years")
-	newYear := newYearRaw.(int)
+	newDomain := plan.Domain.ValueString()
+	newMode := plan.Mode.ValueString()
+	newYear := plan.Years.ValueInt64()
+	contact := plan.Contact.ValueString()
 
-	_, newModeRaw := data.GetChange("mode")
-	newMode := newModeRaw.(string)
+	var state *godaddyDomainResourceModel
+	getStateDiags := req.State.Get(ctx, &state)
+	resp.Diagnostics.Append(getStateDiags...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+	oldDomain := state.Domain.ValueString()
 
 	switch newMode {
 	case MODE_CREATE:
 		//delete old domain first
-		diags := deleteDomain(ctx, client, oldDomain)
-		if diags.HasError() {
-			return diags
+		if oldDomain != newDomain {
+			diag1 := deleteDomain(ctx, r.client, oldDomain)
+			resp.Diagnostics.Append(diag1)
+			if resp.Diagnostics.HasError() {
+				return
+			}
 		}
 
+		var contactInfo api.RegisterDomainInfo
+		diag2 := readContactInfo(contact, &contactInfo)
+		resp.Diagnostics.Append(diag2)
+		if resp.Diagnostics.HasError() {
+			return
+		}
 		//create new domain then
-		diags = createDomain(ctx, client, newDomain, newYear)
-		if diags.HasError() {
-			return diags
+		diag3 := createDomain(ctx, r.client, newDomain, newYear, contactInfo)
+		resp.Diagnostics.Append(diag3)
+		if resp.Diagnostics.HasError() {
+			return
 		}
 
 	case MODE_RENEW:
 		//can't do anything about old domain
-		diags := renewDomain(ctx, client, newDomain, newYear)
-		if diags.HasError() {
-			return diags
+		diag := renewDomain(ctx, r.client, newDomain, newYear)
+		resp.Diagnostics.Append(diag)
+		if resp.Diagnostics.HasError() {
+			return
 		}
 	default:
-		return diag.Errorf("unsupported mode:%s, mode can only be create or renew", newMode)
+		resp.Diagnostics.AddError("invalid mode value", newMode)
 	}
 
-	return nil
 }
 
-func resourceDomainDelete(ctx context.Context, data *schema.ResourceData, meta interface{}) diag.Diagnostics {
-
+// Delete godaddy_domain resource and removes the Terraform state on success.
+func (r *godaddyDomainResource) Delete(ctx context.Context, req resource.DeleteRequest, resp *resource.DeleteResponse) {
 	fmtlog(ctx, "[resourceRecordDelete!]")
-	client := meta.(*api.Client)
-	domainName := strings.ToLower(data.Get(attrDomain).(string))
 
-	diags := deleteDomain(ctx, client, domainName)
-	if diags.HasError() {
-		return diags
+	var state *godaddyDomainResourceModel
+
+	// Retrieve values from plan
+	getStateDiags := req.State.Get(ctx, &state)
+
+	resp.Diagnostics.Append(getStateDiags...)
+	if resp.Diagnostics.HasError() {
+		return
 	}
 
-	return nil
+	domainName := state.Domain.ValueString()
+
+	diag := deleteDomain(ctx, r.client, domainName)
+	resp.Diagnostics.Append(diag)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+
+	resp.State.RemoveResource(ctx)
 }
 
-func createDomain(cxt context.Context, client *api.Client, domainName string, year int) diag.Diagnostics {
+func createDomain(cxt context.Context, client *api.Client, domainName string, year int64, _domainInfo api.RegisterDomainInfo) diag.Diagnostic {
 
 	var domains []string
 	domains = append(domains, domainName)
 	log.Println("domain", domainName, "do not exist, check whether it's available to purchase....")
 	available, err := client.DomainAvailable(domains)
 	if err != nil {
-		return diag.FromErr(err)
+		return DiagnosticErrorOf(err, "DomainAvailable for [%s] failed!!", domainName)
 	}
 	if !available {
-		return diag.Errorf("domain %s is not available,please try to another one", domainName)
+		return DiagnosticErrorOf(nil, "[%s] is not available!", domainName)
 	}
 
 	//extract tld
 	tld, _, err := gotld.GetTld(domainName)
 	agreement, err := client.GetAgreement(tld.Tld, false)
 	if err != nil {
-		return diag.FromErr(err)
+		return DiagnosticErrorOf(err, "GetAgreement for  [%s] failed!!", domainName)
 	}
 	//construct agreement keys
 	var agreementKeys []string
@@ -193,33 +269,33 @@ func createDomain(cxt context.Context, client *api.Client, domainName string, ye
 		agreementKeys = append(agreementKeys, v.AgreementKey)
 	}
 
-	err = client.Purchase(domainName, agreementKeys, _domainInfo)
-	_domainInfo.Period = year
+	err = client.Purchase(domainName, agreementKeys, _domainInfo, strconv.FormatInt(year, 10))
+
 	if err != nil {
 		fmtlog(cxt, "Creating [%s] failed!", domainName)
-		return diag.FromErr(err)
+		return DiagnosticErrorOf(err, "Creating [%s] failed!!", domainName)
 	}
 	fmtlog(cxt, "Creating [%s] success!", domainName)
 	return nil
 }
 
-func renewDomain(cxt context.Context, client *api.Client, domainName string, year int) diag.Diagnostics {
+func renewDomain(cxt context.Context, client *api.Client, domainName string, year int64) diag.Diagnostic {
 
-	err := client.DomainRenew(domainName, year)
+	err := client.DomainRenew(domainName, strconv.FormatInt(year, 10))
 	if err != nil {
 		fmtlog(cxt, "Renew [%s] failed!", domainName)
-		return diag.FromErr(err)
+		return DiagnosticErrorOf(err, "Renew [%s] failed!!", domainName)
 	}
 	fmtlog(cxt, "Renew [%s] success!", domainName)
 	return nil
 }
 
-func deleteDomain(cxt context.Context, client *api.Client, domainName string) diag.Diagnostics {
+func deleteDomain(cxt context.Context, client *api.Client, domainName string) diag.Diagnostic {
 
 	err := client.DomainCancel(domainName)
 	if err != nil {
 		fmtlog(cxt, "Delete [%s] failed!", domainName)
-		return diag.FromErr(err)
+		return DiagnosticErrorOf(err, "Delete [%s] failed!", domainName)
 	}
 	fmtlog(cxt, "Delete [%s] success!", domainName)
 	return nil
@@ -228,4 +304,48 @@ func deleteDomain(cxt context.Context, client *api.Client, domainName string) di
 func fmtlog(ctx context.Context, format string, a ...any) {
 	msg := fmt.Sprintf(format, a)
 	tflog.Info(ctx, msg)
+}
+
+func DiagnosticErrorOf(err error, format string, a ...any) diag.Diagnostic {
+	msg := fmt.Sprintf(format, a)
+	if err != nil {
+		return diag.NewErrorDiagnostic(msg, err.Error())
+	} else {
+		return diag.NewErrorDiagnostic(msg, "")
+	}
+}
+
+func readContactInfo(contact string, domainInfo *api.RegisterDomainInfo) diag.Diagnostic {
+
+	var contactInfo api.Contact
+
+	err := json.Unmarshal([]byte(contact), &contactInfo)
+
+	if err != nil {
+		return DiagnosticErrorOf(nil, "parse contact info failed!, json: ", contact)
+	}
+
+	//admin
+	domainInfo.ContactAdmin = contactInfo
+	//ContactBilling
+	domainInfo.ContactBilling = contactInfo
+	//reg
+	domainInfo.ContactRegistrant = contactInfo
+	//tech
+	domainInfo.ContactTech = contactInfo
+
+	/*  for debug
+	log.Println(domainInfo.ContactAdmin.NameLast)
+	log.Println(domainInfo.ContactAdmin.NameFirst)
+	log.Println(domainInfo.ContactAdmin.Phone)
+	log.Println(domainInfo.ContactAdmin.Fax)
+	log.Println(domainInfo.ContactAdmin.Organization)
+	log.Println(domainInfo.ContactAdmin.NameMiddle)
+	log.Println(domainInfo.ContactAdmin.JobTitle)
+	log.Println(domainInfo.ContactAdmin.Email)
+	log.Println(domainInfo.ContactAdmin.AddressMailing.Address1)
+	log.Println(domainInfo.ContactAdmin.AddressMailing.Country)
+	*/
+
+	return nil
 }

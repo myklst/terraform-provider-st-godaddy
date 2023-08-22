@@ -1,4 +1,4 @@
-package godaddy
+package godaddy_provider
 
 import (
 	"fmt"

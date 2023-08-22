@@ -2,8 +2,10 @@
 package main
 
 import (
-	"github.com/hashicorp/terraform-plugin-sdk/v2/plugin"
-	"terraform-provider-st-godaddy/plugin/godaddy"
+	"context"
+	"github.com/hashicorp/terraform-plugin-framework/providerserver"
+	"os"
+	godaddy_provider "terraform-provider-st-godaddy/plugin/godaddy"
 )
 
 var (
@@ -16,7 +18,12 @@ var (
 )
 
 func main() {
-	plugin.Serve(&plugin.ServeOpts{
-		ProviderFunc: godaddy.Provider,
+	providerAddress := os.Getenv("PROVIDER_LOCAL_PATH")
+	if providerAddress == "" {
+		providerAddress = "registry.terraform.io/myklst/st-godaddy"
+	}
+
+	providerserver.Serve(context.Background(), godaddy_provider.New, providerserver.ServeOpts{
+		Address: providerAddress,
 	})
 }
