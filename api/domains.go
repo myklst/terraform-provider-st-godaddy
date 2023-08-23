@@ -168,15 +168,20 @@ func (c *Client) GetAgreement(tld string, privacy bool) ([]*AgreementsResp, erro
 	return resp, nil
 }
 
-func (c *Client) Purchase(domainName string, keys []string, info RegisterDomainInfo, years string) error {
+func (c *Client) Purchase(domainName string, info RegisterDomainInfo, years string) error {
 	//url
 	domainURL := fmt.Sprintf(pathDomainPurchase, c.baseURL)
 
 	//request
 	info.Domain = domainName
+	keys := []string{"DNRA"}
 	info.Consent.AgreementKeys = keys
-	info.Consent.AgreedAt = time.Now().String()
+	info.Consent.AgreedAt = time.Now().UTC().Format(time.RFC3339)
+
 	info.Consent.AgreedBy = info.ContactAdmin.NameFirst + " " + info.ContactAdmin.NameLast
+
+	ns := []string{"0.0.0.0"}
+	info.NameServers = ns
 
 	n, err := strconv.Atoi(years)
 	info.Period = n

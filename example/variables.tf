@@ -5,19 +5,19 @@ locals {
   contact = jsonencode(
     {
       "addressMailing": {
-        "address1": "Street Ave. 666",
-        "address2": "string",
-        "city": "New City",
+        "address1": "1501 India Street",
+        "address2": " ",
+        "city": "San Diego",
         "country": "US",
-        "postalCode": "11-111",
-        "state": "state of art"
+        "postalCode": "92101",
+        "state": "California"
       },
       "email": "john.doe@test-domain.com",
       "fax": "+48.111111111",
-      "jobTitle": "XXX",
+      "jobTitle": "CEO",
       "nameFirst": "John",
       "nameLast": "Doe",
-      "nameMiddle": "XXX",
+      "nameMiddle": " ",
       "organization": "Corporation Inc.",
       "phone": "+48.111111111"
     }

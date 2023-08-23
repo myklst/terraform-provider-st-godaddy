@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"github.com/forease/gotld"
 	"github.com/hashicorp/terraform-plugin-framework/diag"
 	"github.com/hashicorp/terraform-plugin-framework/path"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
@@ -258,18 +257,19 @@ func createDomain(cxt context.Context, client *api.Client, domainName string, ye
 	}
 
 	//extract tld
-	tld, _, err := gotld.GetTld(domainName)
-	agreement, err := client.GetAgreement(tld.Tld, false)
-	if err != nil {
-		return DiagnosticErrorOf(err, "GetAgreement for  [%s] failed!!", domainName)
-	}
-	//construct agreement keys
-	var agreementKeys []string
-	for _, v := range agreement {
-		agreementKeys = append(agreementKeys, v.AgreementKey)
-	}
+	/*
+		tld, _, err := gotld.GetTld(domainName)
+		agreement, err := client.GetAgreement(tld.Tld, false)
+		if err != nil {
+			return DiagnosticErrorOf(err, "GetAgreement for  [%s] failed!!", domainName)
+		}
+		//construct agreement keys
+		var agreementKeys []string
+		for _, v := range agreement {
+			agreementKeys = append(agreementKeys, v.AgreementKey)
+		}*/
 
-	err = client.Purchase(domainName, agreementKeys, _domainInfo, strconv.FormatInt(year, 10))
+	err = client.Purchase(domainName, _domainInfo, strconv.FormatInt(year, 10))
 
 	if err != nil {
 		fmtlog(cxt, "Creating [%s] failed!", domainName)

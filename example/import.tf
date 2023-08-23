@@ -1,7 +1,8 @@
 
+/*
 import {
-  to = godaddy_domain.gd-fancy-domain
+  to = godaddy_domain.test-domain
   id = "test-domain.com"
 }
-
+*/
 
