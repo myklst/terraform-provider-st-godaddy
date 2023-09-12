@@ -12,7 +12,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-log/tflog"
 	"log"
 	"strconv"
-	"terraform-provider-st-godaddy/api"
+	api2 "terraform-provider-st-godaddy/godaddy/api"
 )
 
 const (
@@ -27,7 +27,7 @@ func NewGodaddyDomainResource() resource.Resource {
 }
 
 type godaddyDomainResource struct {
-	client *api.Client
+	client *api2.Client
 }
 
 type godaddyDomainResourceModel struct {
@@ -47,7 +47,7 @@ func (r *godaddyDomainResource) Configure(_ context.Context, req resource.Config
 	if req.ProviderData == nil {
 		return
 	}
-	r.client = req.ProviderData.(*api.Client)
+	r.client = req.ProviderData.(*api2.Client)
 }
 
 func (r *godaddyDomainResource) ImportState(ctx context.Context, req resource.ImportStateRequest, resp *resource.ImportStateResponse) {
@@ -98,7 +98,7 @@ func (r *godaddyDomainResource) Create(ctx context.Context, req resource.CreateR
 
 	switch mode {
 	case MODE_CREATE:
-		var contactInfo api.RegisterDomainInfo
+		var contactInfo api2.RegisterDomainInfo
 		diag1 := readContactInfo(contact, &contactInfo)
 		resp.Diagnostics.Append(diag1)
 		if resp.Diagnostics.HasError() {
@@ -192,7 +192,7 @@ func (r *godaddyDomainResource) Update(ctx context.Context, req resource.UpdateR
 			}
 		}
 
-		var contactInfo api.RegisterDomainInfo
+		var contactInfo api2.RegisterDomainInfo
 		diag2 := readContactInfo(contact, &contactInfo)
 		resp.Diagnostics.Append(diag2)
 		if resp.Diagnostics.HasError() {
@@ -243,7 +243,7 @@ func (r *godaddyDomainResource) Delete(ctx context.Context, req resource.DeleteR
 	resp.State.RemoveResource(ctx)
 }
 
-func createDomain(cxt context.Context, client *api.Client, domainName string, year int64, _domainInfo api.RegisterDomainInfo) diag.Diagnostic {
+func createDomain(cxt context.Context, client *api2.Client, domainName string, year int64, _domainInfo api2.RegisterDomainInfo) diag.Diagnostic {
 
 	var domains []string
 	domains = append(domains, domainName)
@@ -279,7 +279,7 @@ func createDomain(cxt context.Context, client *api.Client, domainName string, ye
 	return nil
 }
 
-func renewDomain(cxt context.Context, client *api.Client, domainName string, year int64) diag.Diagnostic {
+func renewDomain(cxt context.Context, client *api2.Client, domainName string, year int64) diag.Diagnostic {
 
 	err := client.DomainRenew(domainName, strconv.FormatInt(year, 10))
 	if err != nil {
@@ -290,7 +290,7 @@ func renewDomain(cxt context.Context, client *api.Client, domainName string, yea
 	return nil
 }
 
-func deleteDomain(cxt context.Context, client *api.Client, domainName string) diag.Diagnostic {
+func deleteDomain(cxt context.Context, client *api2.Client, domainName string) diag.Diagnostic {
 
 	err := client.DomainCancel(domainName)
 	if err != nil {
@@ -315,9 +315,9 @@ func DiagnosticErrorOf(err error, format string, a ...any) diag.Diagnostic {
 	}
 }
 
-func readContactInfo(contact string, domainInfo *api.RegisterDomainInfo) diag.Diagnostic {
+func readContactInfo(contact string, domainInfo *api2.RegisterDomainInfo) diag.Diagnostic {
 
-	var contactInfo api.Contact
+	var contactInfo api2.Contact
 
 	err := json.Unmarshal([]byte(contact), &contactInfo)
 

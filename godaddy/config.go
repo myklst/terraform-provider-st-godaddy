@@ -3,8 +3,7 @@ package godaddy_provider
 import (
 	"fmt"
 	"log"
-
-	"terraform-provider-st-godaddy/api"
+	"terraform-provider-st-godaddy/godaddy/api"
 )
 
 // Config provides the provider's configuration

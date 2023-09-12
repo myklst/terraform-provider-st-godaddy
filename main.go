@@ -5,17 +5,11 @@ import (
 	"context"
 	"github.com/hashicorp/terraform-plugin-framework/providerserver"
 	"os"
-	godaddy_provider "terraform-provider-st-godaddy/plugin/godaddy"
+	"terraform-provider-st-godaddy/godaddy"
 )
 
-var (
-	// these will be set by the goreleaser configuration
-	// to appropriate values for the compiled binary
-	version string = "dev"
-
-	// goreleaser can also pass the specific commit if you want
-	// commit  string = ""
-)
+// Generate the Terraform provider documentation using `tfplugindocs`:
+//go:generate go run github.com/hashicorp/terraform-plugin-docs/cmd/tfplugindocs
 
 func main() {
 	providerAddress := os.Getenv("PROVIDER_LOCAL_PATH")
