@@ -92,9 +92,10 @@ var supportedTypes = map[string]struct{}{
 
 // Domain encapsulates a domain resource
 type Domain struct {
-	ID     int64  `json:"domainId"`
-	Name   string `json:"domain"`
-	Status string `json:"status"`
+	ID      int64  `json:"domainId"`
+	Name    string `json:"domain"`
+	Status  string `json:"status"`
+	Expires string `json:"expires"`
 }
 
 // DomainRecord encapsulates a domain record resource

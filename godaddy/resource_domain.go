@@ -8,38 +8,42 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/path"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
+	"github.com/hashicorp/terraform-plugin-framework/resource/schema/int64default"
+	"github.com/hashicorp/terraform-plugin-framework/resource/schema/planmodifier"
+	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 	"github.com/hashicorp/terraform-plugin-log/tflog"
 	"log"
 	"strconv"
-	api2 "terraform-provider-st-godaddy/godaddy/api"
+	"strings"
+	"terraform-provider-st-godaddy/godaddy/api"
+	"time"
 )
 
 const (
-	attrMode  = "mode"
-	attrYears = "years"
+	MODE_CREATE = "create"
+	MODE_RENEW  = "renew"
+	MODE_SKIP   = "skip"
 )
-const MODE_CREATE = "create"
-const MODE_RENEW = "renew"
 
 func NewGodaddyDomainResource() resource.Resource {
 	return &godaddyDomainResource{}
 }
 
 type godaddyDomainResource struct {
-	client *api2.Client
+	client *api.Client
 }
 
 type godaddyDomainResourceModel struct {
-	Domain  types.String `tfsdk:"domain"`
-	Mode    types.String `tfsdk:"mode"`
-	Years   types.Int64  `tfsdk:"years"`
-	Contact types.String `tfsdk:"contact"`
+	Domain           types.String `tfsdk:"domain"`
+	MinDaysRemaining types.Int64  `tfsdk:"min_days_remaining"`
+	Years            types.Int64  `tfsdk:"auto_renew_years"`
+	Contact          types.String `tfsdk:"contact"`
 }
 
 // Metadata returns the resource godaddy_domain type name.
 func (r *godaddyDomainResource) Metadata(_ context.Context, req resource.MetadataRequest, resp *resource.MetadataResponse) {
-	resp.TypeName = "godaddy_domain"
+	resp.TypeName = req.ProviderTypeName + "_domain"
 }
 
 // Configure adds the provider configured client to the resource.
@@ -47,7 +51,7 @@ func (r *godaddyDomainResource) Configure(_ context.Context, req resource.Config
 	if req.ProviderData == nil {
 		return
 	}
-	r.client = req.ProviderData.(*api2.Client)
+	r.client = req.ProviderData.(*api.Client)
 }
 
 func (r *godaddyDomainResource) ImportState(ctx context.Context, req resource.ImportStateRequest, resp *resource.ImportStateResponse) {
@@ -58,19 +62,29 @@ func (r *godaddyDomainResource) ImportState(ctx context.Context, req resource.Im
 // Schema defines the schema for the godaddy_domain resource.
 func (r *godaddyDomainResource) Schema(_ context.Context, _ resource.SchemaRequest, resp *resource.SchemaResponse) {
 	resp.Schema = schema.Schema{
-		Description: "Provides a godaddy_domain resource.",
+		Description: "Manage a domain in Godaddy",
 		Attributes: map[string]schema.Attribute{
-			"domain": schema.StringAttribute{
-				Description: "Purchased available domain name on your account",
+			"domain": &schema.StringAttribute{
+				Description: "Domain name to manage in NameCheap",
 				Required:    true,
+				PlanModifiers: []planmodifier.String{
+					stringplanmodifier.RequiresReplace(),
+				},
 			},
-			"mode": schema.StringAttribute{
-				Description: "domain operation type, include create, renew.",
-				Required:    true,
+			"min_days_remaining": &schema.Int64Attribute{
+				MarkdownDescription: "The minimum amount of days remaining on the expiration of a domain before a " +
+					"renewal is attempted. The default is `30`. A value of less than `0` means that the domain will " +
+					"never be renewed.",
+				Optional: true,
+				Computed: true,
+				Default:  int64default.StaticInt64(30),
 			},
-			"years": schema.Int64Attribute{
-				Description: "Number of years to register",
-				Required:    true,
+			"auto_renew_years": &schema.Int64Attribute{
+				MarkdownDescription: "Number of years to register and renew. The default is `1`. A value of less " +
+					"than `0` means that the domain will never be auto renewed.",
+				Optional: true,
+				Computed: true,
+				Default:  int64default.StaticInt64(1),
 			},
 			"contact": schema.StringAttribute{
 				Description: "Contact info in json format",
@@ -92,38 +106,28 @@ func (r *godaddyDomainResource) Create(ctx context.Context, req resource.CreateR
 	}
 
 	domain := plan.Domain.ValueString()
-	mode := plan.Mode.ValueString()
 	years := plan.Years.ValueInt64()
 	contact := plan.Contact.ValueString()
 
-	switch mode {
-	case MODE_CREATE:
-		var contactInfo api2.RegisterDomainInfo
-		diag1 := readContactInfo(contact, &contactInfo)
-		resp.Diagnostics.Append(diag1)
-		if resp.Diagnostics.HasError() {
-			return
-		}
-		diag2 := createDomain(ctx, r.client, domain, years, contactInfo)
-		resp.Diagnostics.Append(diag2)
-		if resp.Diagnostics.HasError() {
-			return
-		}
-	case MODE_RENEW:
-		diag := renewDomain(ctx, r.client, domain, years)
-		resp.Diagnostics.Append(diag)
-		if resp.Diagnostics.HasError() {
-			return
-		}
-	default:
-		resp.Diagnostics.AddError("invalid mode value", mode)
+	var contactInfo api.RegisterDomainInfo
+	diag1 := r.readContactInfo(contact, &contactInfo)
+	resp.Diagnostics.Append(diag1)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+	diag2 := r.createDomain(ctx, domain, years, contactInfo)
+	resp.Diagnostics.Append(diag2)
+	if resp.Diagnostics.HasError() {
+		return
 	}
 
 	// Set state items
-	state := &godaddyDomainResourceModel{}
-	state.Mode = plan.Mode
-	state.Domain = plan.Domain
-	state.Years = plan.Years
+	state := &godaddyDomainResourceModel{
+		Domain:           plan.Domain,
+		Years:            plan.Years,
+		MinDaysRemaining: plan.MinDaysRemaining,
+		Contact:          plan.Contact,
+	}
 
 	setStateDiags := resp.State.Set(ctx, state)
 	resp.Diagnostics.Append(setStateDiags...)
@@ -154,6 +158,13 @@ func (r *godaddyDomainResource) Read(ctx context.Context, req resource.ReadReque
 		if resp.Diagnostics.HasError() {
 			return
 		}
+	} else {
+		if strings.Contains(err.Error(), "Domain is invalid") {
+			resp.State.RemoveResource(ctx)
+			return
+		} else {
+			resp.Diagnostics.AddError("Get domain info error ", err.Error())
+		}
 	}
 }
 
@@ -168,52 +179,41 @@ func (r *godaddyDomainResource) Update(ctx context.Context, req resource.UpdateR
 		return
 	}
 
-	newDomain := plan.Domain.ValueString()
-	newMode := plan.Mode.ValueString()
-	newYear := plan.Years.ValueInt64()
-	contact := plan.Contact.ValueString()
-
-	var state *godaddyDomainResourceModel
-	getStateDiags := req.State.Get(ctx, &state)
-	resp.Diagnostics.Append(getStateDiags...)
+	newMode, diag := r.calculateMode(plan)
+	resp.Diagnostics.Append(diag)
 	if resp.Diagnostics.HasError() {
 		return
 	}
-	oldDomain := state.Domain.ValueString()
+	fmtlog(ctx, "CalculateMode Complete,Mode = %s", newMode)
+	newDomain := plan.Domain.ValueString()
+	newYear := plan.Years.ValueInt64()
 
 	switch newMode {
-	case MODE_CREATE:
-		//delete old domain first
-		if oldDomain != newDomain {
-			diag1 := deleteDomain(ctx, r.client, oldDomain)
-			resp.Diagnostics.Append(diag1)
-			if resp.Diagnostics.HasError() {
-				return
-			}
-		}
-
-		var contactInfo api2.RegisterDomainInfo
-		diag2 := readContactInfo(contact, &contactInfo)
-		resp.Diagnostics.Append(diag2)
-		if resp.Diagnostics.HasError() {
-			return
-		}
-		//create new domain then
-		diag3 := createDomain(ctx, r.client, newDomain, newYear, contactInfo)
-		resp.Diagnostics.Append(diag3)
-		if resp.Diagnostics.HasError() {
-			return
-		}
 
 	case MODE_RENEW:
-		//can't do anything about old domain
-		diag := renewDomain(ctx, r.client, newDomain, newYear)
+		diag := r.renewDomain(ctx, r.client, newDomain, newYear)
 		resp.Diagnostics.Append(diag)
 		if resp.Diagnostics.HasError() {
 			return
 		}
+	case MODE_SKIP:
+
 	default:
 		resp.Diagnostics.AddError("invalid mode value", newMode)
+		return
+	}
+
+	// Set state items
+	state := &godaddyDomainResourceModel{}
+	state.Domain = plan.Domain
+	state.Years = plan.Years
+	state.MinDaysRemaining = plan.MinDaysRemaining
+	state.Contact = plan.Contact
+
+	setStateDiags := resp.State.Set(ctx, state)
+	resp.Diagnostics.Append(setStateDiags...)
+	if resp.Diagnostics.HasError() {
+		return
 	}
 
 }
@@ -234,7 +234,7 @@ func (r *godaddyDomainResource) Delete(ctx context.Context, req resource.DeleteR
 
 	domainName := state.Domain.ValueString()
 
-	diag := deleteDomain(ctx, r.client, domainName)
+	diag := r.deleteDomain(ctx, domainName)
 	resp.Diagnostics.Append(diag)
 	if resp.Diagnostics.HasError() {
 		return
@@ -243,8 +243,9 @@ func (r *godaddyDomainResource) Delete(ctx context.Context, req resource.DeleteR
 	resp.State.RemoveResource(ctx)
 }
 
-func createDomain(cxt context.Context, client *api2.Client, domainName string, year int64, _domainInfo api2.RegisterDomainInfo) diag.Diagnostic {
+func (r *godaddyDomainResource) createDomain(cxt context.Context, domainName string, year int64, _domainInfo api.RegisterDomainInfo) diag.Diagnostic {
 
+	client := r.client
 	var domains []string
 	domains = append(domains, domainName)
 	log.Println("domain", domainName, "do not exist, check whether it's available to purchase....")
@@ -279,7 +280,7 @@ func createDomain(cxt context.Context, client *api2.Client, domainName string, y
 	return nil
 }
 
-func renewDomain(cxt context.Context, client *api2.Client, domainName string, year int64) diag.Diagnostic {
+func (r *godaddyDomainResource) renewDomain(cxt context.Context, client *api.Client, domainName string, year int64) diag.Diagnostic {
 
 	err := client.DomainRenew(domainName, strconv.FormatInt(year, 10))
 	if err != nil {
@@ -290,15 +291,35 @@ func renewDomain(cxt context.Context, client *api2.Client, domainName string, ye
 	return nil
 }
 
-func deleteDomain(cxt context.Context, client *api2.Client, domainName string) diag.Diagnostic {
+func (r *godaddyDomainResource) deleteDomain(cxt context.Context, domainName string) diag.Diagnostic {
 
-	err := client.DomainCancel(domainName)
+	err := r.client.DomainCancel(domainName)
 	if err != nil {
 		fmtlog(cxt, "Delete [%s] failed!", domainName)
 		return DiagnosticErrorOf(err, "Delete [%s] failed!", domainName)
 	}
 	fmtlog(cxt, "Delete [%s] success!", domainName)
 	return nil
+}
+
+func (r *godaddyDomainResource) calculateMode(plan *godaddyDomainResourceModel) (string, diag.Diagnostic) {
+	domain := plan.Domain.ValueString()
+
+	res, err := r.client.GetDomain(domain)
+	if err != nil {
+		return "", DiagnosticErrorOf(err, "domain [%s] doesn't exist", domain)
+	}
+
+	minDaysRemain := plan.MinDaysRemaining.ValueInt64()
+	expires := res.Expires
+	const layout = "2023-09-12T05:33:45.834Z"
+	exp, _ := time.Parse(layout, expires)
+	diff := time.Until(exp)
+	if int64(diff.Hours()) < minDaysRemain*24 {
+		return MODE_RENEW, nil
+	}
+
+	return MODE_SKIP, nil
 }
 
 func fmtlog(ctx context.Context, format string, a ...any) {
@@ -315,9 +336,9 @@ func DiagnosticErrorOf(err error, format string, a ...any) diag.Diagnostic {
 	}
 }
 
-func readContactInfo(contact string, domainInfo *api2.RegisterDomainInfo) diag.Diagnostic {
+func (r *godaddyDomainResource) readContactInfo(contact string, domainInfo *api.RegisterDomainInfo) diag.Diagnostic {
 
-	var contactInfo api2.Contact
+	var contactInfo api.Contact
 
 	err := json.Unmarshal([]byte(contact), &contactInfo)
 
