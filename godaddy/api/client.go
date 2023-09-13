@@ -12,6 +12,8 @@ import (
 	"strings"
 	"sync"
 	"time"
+
+	"github.com/cenkalti/backoff/v4"
 )
 
 const (
@@ -80,6 +82,22 @@ func NewClient(baseURL, key, secret string) (*Client, error) {
 			},
 		},
 	}, nil
+}
+
+func (c *Client) executeWithBackoff(customerID string, req *http.Request, result interface{}) error {
+
+	operation := func() error {
+		var err error
+		err = c.execute(customerID, req, result)
+		return err
+	}
+
+	err := backoff.Retry(operation, backoff.NewExponentialBackOff())
+	if err != nil {
+		return err
+	}
+
+	return nil
 }
 
 func (c *Client) execute(customerID string, req *http.Request, result interface{}) error {

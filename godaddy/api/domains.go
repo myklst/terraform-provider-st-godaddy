@@ -35,7 +35,7 @@ func (c *Client) GetDomains(customerID string) ([]Domain, error) {
 	}
 
 	var d []Domain
-	if err := c.execute(customerID, req, &d); err != nil {
+	if err := c.executeWithBackoff(customerID, req, &d); err != nil {
 		return nil, err
 	}
 
@@ -52,7 +52,7 @@ func (c *Client) GetDomain(domain string) (*Domain, error) {
 	}
 
 	d := new(Domain)
-	if err := c.execute("", req, &d); err != nil {
+	if err := c.executeWithBackoff("", req, &d); err != nil {
 		return nil, err
 	}
 
@@ -72,7 +72,7 @@ func (c *Client) GetDomainRecords(domain string) ([]*DomainRecord, error) {
 			return nil, err
 		}
 
-		if err := c.execute("", req, &page); err != nil {
+		if err := c.executeWithBackoff("", req, &page); err != nil {
 			return nil, err
 		}
 		if len(page) == 0 {
@@ -109,7 +109,7 @@ func (c *Client) UpdateDomainRecords(customerID, domain string, records []*Domai
 			return err
 		}
 
-		if err := c.execute(customerID, req, nil); err != nil {
+		if err := c.executeWithBackoff(customerID, req, nil); err != nil {
 			return err
 		}
 	}
@@ -144,7 +144,7 @@ func (c *Client) DomainAvailable(domainNames []string) (bool, error) {
 		return false, err
 	}
 	var resp AvailableResp
-	if err := c.execute("", req, &resp); err != nil {
+	if err := c.executeWithBackoff("", req, &resp); err != nil {
 		return false, err
 	}
 
@@ -162,7 +162,7 @@ func (c *Client) GetAgreement(tld string, privacy bool) ([]*AgreementsResp, erro
 	}
 
 	resp := make([]*AgreementsResp, 0)
-	if err := c.execute("", req, &resp); err != nil {
+	if err := c.executeWithBackoff("", req, &resp); err != nil {
 		return nil, err
 	}
 	return resp, nil
@@ -198,7 +198,7 @@ func (c *Client) Purchase(domainName string, info RegisterDomainInfo, years stri
 	}
 	//response
 	var resp DomainPurchaseResponse
-	if err := c.execute("", req, &resp); err != nil {
+	if err := c.executeWithBackoff("", req, &resp); err != nil {
 		return err
 	}
 
@@ -224,7 +224,7 @@ func (c *Client) DomainRenew(domain string, years string) error {
 	//response
 	var resp DomainPurchaseResponse
 	//do request
-	if err := c.execute("", req, &resp); err != nil {
+	if err := c.executeWithBackoff("", req, &resp); err != nil {
 		return err
 	}
 
@@ -240,14 +240,9 @@ func (c *Client) DomainCancel(domain string) error {
 		return err
 	}
 	//do request
-	if err := c.execute("", req, nil); err != nil {
+	if err := c.executeWithBackoff("", req, nil); err != nil {
 		return err
 	}
 
 	return nil
-}
-
-// Retrieve the schema to be submitted when registering a Domain for the specified TLD
-func (c *Client) Schema(domainNames []string) (bool, error) {
-	return false, nil
 }

@@ -15,7 +15,7 @@ UNAME_S := $(shell uname -s)
 # VERSION := $(shell grep "version=" install.sh | cut -d= -f2)
 VERSION := 2.2.0
 
-BINARY := "terraform-provider-godaddy_v$(VERSION)"
+BINARY := "terraform-provider-st-godaddy_v$(VERSION)"
 
 # exports all variables
 export
@@ -35,7 +35,7 @@ docs:
 local:
 	go build -o $(BINARY) -ldflags='-s -w -X main.version=$(VERSION) -X main.commit=$(COMMIT)' .
 	rm -rf ~/.terraform/plugins/terraform-godaddy
-	rm -rf ~/.terraform.d/plugins/registry.terraform.io/n3integration/godaddy/$(VERSION)/$(OS)_$(ARCH)
-	mkdir -p ~/.terraform.d/plugins/registry.terraform.io/n3integration/godaddy/$(VERSION)/$(OS)_$(ARCH)/
-	mv $(BINARY) ~/.terraform.d/plugins/registry.terraform.io/n3integration/godaddy/$(VERSION)/$(OS)_$(ARCH)/
-	chmod +x ~/.terraform.d/plugins/registry.terraform.io/n3integration/godaddy/$(VERSION)/$(OS)_$(ARCH)/$(BINARY)
+	rm -rf ~/.terraform.d/plugins/registry.terraform.io/myklst/st-namecheap/$(VERSION)/$(OS)_$(ARCH)
+	mkdir -p ~/.terraform.d/plugins/registry.terraform.io/myklst/st-namecheap/$(VERSION)/$(OS)_$(ARCH)/
+	mv $(BINARY) ~/.terraform.d/plugins/registry.terraform.io/myklst/st-namecheap/$(VERSION)/$(OS)_$(ARCH)/
+	chmod +x ~/.terraform.d/plugins/registry.terraform.io/myklst/st-namecheap/$(VERSION)/$(OS)_$(ARCH)/$(BINARY)
