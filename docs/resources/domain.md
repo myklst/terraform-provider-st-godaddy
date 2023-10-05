@@ -15,7 +15,7 @@ Manage a domain in Godaddy
 ```terraform
 resource "st-godaddy_domain" "domain-com" {
   domain = "sige-test11.com"
-  auto_renew_years = 1
+  purchase_years = 1
   min_days_remaining = 90
   contact = local.contact
 }
@@ -31,5 +31,5 @@ resource "st-godaddy_domain" "domain-com" {
 
 ### Optional
 
-- `auto_renew_years` (Number) Number of years to register and renew. The default is `1`. A value of less than `0` means that the domain will never be auto renewed.
 - `min_days_remaining` (Number) The minimum amount of days remaining on the expiration of a domain before a renewal is attempted. The default is `30`. A value of less than `0` means that the domain will never be renewed.
+- `purchase_years` (Number) Number of years to purchase and renew. The default is `1`.

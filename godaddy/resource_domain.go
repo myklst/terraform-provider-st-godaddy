@@ -37,7 +37,7 @@ type godaddyDomainResource struct {
 type godaddyDomainResourceModel struct {
 	Domain           types.String `tfsdk:"domain"`
 	MinDaysRemaining types.Int64  `tfsdk:"min_days_remaining"`
-	Years            types.Int64  `tfsdk:"auto_renew_years"`
+	Years            types.Int64  `tfsdk:"purchase_years"`
 	Contact          types.String `tfsdk:"contact"`
 }
 
@@ -79,12 +79,11 @@ func (r *godaddyDomainResource) Schema(_ context.Context, _ resource.SchemaReque
 				Computed: true,
 				Default:  int64default.StaticInt64(30),
 			},
-			"auto_renew_years": &schema.Int64Attribute{
-				MarkdownDescription: "Number of years to register and renew. The default is `1`. A value of less " +
-					"than `0` means that the domain will never be auto renewed.",
-				Optional: true,
-				Computed: true,
-				Default:  int64default.StaticInt64(1),
+			"purchase_years": &schema.Int64Attribute{
+				MarkdownDescription: "Number of years to purchase and renew. The default is `1`.",
+				Optional:            true,
+				Computed:            true,
+				Default:             int64default.StaticInt64(1),
 			},
 			"contact": schema.StringAttribute{
 				Description: "Contact info in json format",
@@ -343,7 +342,7 @@ func (r *godaddyDomainResource) readContactInfo(contact string, domainInfo *api.
 	err := json.Unmarshal([]byte(contact), &contactInfo)
 
 	if err != nil {
-		return DiagnosticErrorOf(nil, "parse contact info failed!, json: ", contact)
+		return DiagnosticErrorOf(err, "parse contact info failed!, json: ", contact)
 	}
 
 	//admin
