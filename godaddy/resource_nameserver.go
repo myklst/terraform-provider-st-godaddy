@@ -30,7 +30,7 @@ type godaddyNameServerResourceModel struct {
 
 // Metadata returns the resource godaddy_domain type name.
 func (r *godaddyNameServerResource) Metadata(_ context.Context, req resource.MetadataRequest, resp *resource.MetadataResponse) {
-	resp.TypeName = req.ProviderTypeName + "_nameserver"
+	resp.TypeName = req.ProviderTypeName + "_nameserver_attachment"
 }
 
 // Configure adds the provider configured client to the resource.
