@@ -1,41 +1,34 @@
-.PHONY: linux docs local
-# ==================== [START] Global Variable Declaration =================== #
-SHELL := /bin/bash
-# 'shell' removes newlines
-ARCH := $(shell go env GOARCH)
+# The name of Terraform custom provider.
+CUSTOM_PROVIDER_NAME ?= terraform-provider-st-godaddy
+# The url of Terraform provider.
+CUSTOM_PROVIDER_URL ?= example.local/myklst/st-godaddy
+OS := $(shell uname)
 
-BASE_DIR := $(shell pwd)
+.PHONY: all
 
-COMMIT := $(shell git rev-parse --short HEAD)
+all: macarm linux
 
-OS := $(shell go env GOOS)
-
-UNAME_S := $(shell uname -s)
-
-# VERSION := $(shell grep "version=" install.sh | cut -d= -f2)
-VERSION := 2.2.0
-
-BINARY := "terraform-provider-st-godaddy_v$(VERSION)"
-
-# exports all variables
-export
-# ===================== [END] Global Variable Declaration ==================== #
+macarm:
+ifneq ($(OS), Darwin)
+	$(info 'skip macarm')
+else
+	export PROVIDER_LOCAL_PATH='$(CUSTOM_PROVIDER_URL)'
+	GOOS=darwin GOARCH=arm64 go install .
+	GO_INSTALL_PATH="$$(go env GOPATH)/bin"; \
+	HOME_DIR="$$(ls -d ~)"; \
+	mkdir -p  $$HOME_DIR/.terraform.d/plugins/$(CUSTOM_PROVIDER_URL)/0.1.0/darwin_arm64/; \
+	cp $$GO_INSTALL_PATH/$(CUSTOM_PROVIDER_NAME) $$HOME_DIR/.terraform.d/plugins/$(CUSTOM_PROVIDER_URL)/0.1.0/darwin_arm64/$(CUSTOM_PROVIDER_NAME)
+endif
 
 linux:
-	@echo "Pulling latest image"
-	@docker-compose -f "${BASE_DIR}/docker/docker-compose.yml" pull
-	@echo "Compile and build"
-	@docker-compose -f "${BASE_DIR}/docker/docker-compose.yml" run --rm builder
-	@echo "Cleaning up resources"
-	@docker-compose -f "${BASE_DIR}/docker/docker-compose.yml" down
-	
-docs:
-	@go generate
-
-local:
-	go build -o $(BINARY) -ldflags='-s -w -X main.version=$(VERSION) -X main.commit=$(COMMIT)' .
-	rm -rf ~/.terraform/plugins/terraform-godaddy
-	rm -rf ~/.terraform.d/plugins/registry.terraform.io/myklst/st-namecheap/$(VERSION)/$(OS)_$(ARCH)
-	mkdir -p ~/.terraform.d/plugins/registry.terraform.io/myklst/st-namecheap/$(VERSION)/$(OS)_$(ARCH)/
-	mv $(BINARY) ~/.terraform.d/plugins/registry.terraform.io/myklst/st-namecheap/$(VERSION)/$(OS)_$(ARCH)/
-	chmod +x ~/.terraform.d/plugins/registry.terraform.io/myklst/st-namecheap/$(VERSION)/$(OS)_$(ARCH)/$(BINARY)
+ifneq ($(OS), Linux)
+	$(info 'skip linux')
+else
+	export PROVIDER_LOCAL_PATH='$(CUSTOM_PROVIDER_URL)'
+	GOOS=linux GOARCH=amd64 go install .
+	GO_INSTALL_PATH="$$(go env GOPATH)/bin"; \
+	HOME_DIR="$$(ls -d ~)"; \
+	mkdir -p  $$HOME_DIR/.terraform.d/plugins/$(CUSTOM_PROVIDER_URL)/0.1.0/linux_amd64/; \
+	cp $$GO_INSTALL_PATH/$(CUSTOM_PROVIDER_NAME) $$HOME_DIR/.terraform.d/plugins/$(CUSTOM_PROVIDER_URL)/0.1.0/linux_amd64/$(CUSTOM_PROVIDER_NAME)
+	unset PROVIDER_LOCAL_PATH
+endif
