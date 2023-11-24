@@ -74,6 +74,7 @@ func (p *godaddyProvider) Configure(ctx context.Context, req provider.ConfigureR
 func (p *godaddyProvider) Resources(_ context.Context) []func() resource.Resource {
 	return []func() resource.Resource{
 		NewGodaddyDomainResource,
+		NewGodaddyNameServerResource,
 	}
 }
 

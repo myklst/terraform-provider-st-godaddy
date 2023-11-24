@@ -59,6 +59,24 @@ func (c *Client) GetDomain(domain string) (*Domain, error) {
 	return d, nil
 }
 
+// GetDomain fetches the name servers for the provided domain
+func (c *Client) GetDomainNameServers(domain string) ([]string, error) {
+	domainURL := fmt.Sprintf(pathDomains, c.baseURL, domain)
+	req, err := http.NewRequest(http.MethodGet, domainURL, nil)
+
+	if err != nil {
+		return nil, err
+	}
+
+	var nameservers *NameServers
+	if err := c.executeWithBackoff("", req, &nameservers); err != nil {
+		return nil, err
+	}
+
+	return nameservers.NameServers, nil
+
+}
+
 // GetDomainRecords fetches all existing records for the provided domain
 func (c *Client) GetDomainRecords(domain string) ([]*DomainRecord, error) {
 	offset := 1
@@ -83,6 +101,27 @@ func (c *Client) GetDomainRecords(domain string) ([]*DomainRecord, error) {
 	}
 
 	return records, nil
+}
+
+func (c *Client) UpdateNameServers(domain string, nameServers NameServers) error {
+	domainURL := fmt.Sprintf(pathDomains, c.baseURL, domain)
+
+	msg, err := json.Marshal(nameServers)
+	if err != nil {
+		return err
+	}
+
+	buffer := bytes.NewBuffer(msg)
+	req, err := http.NewRequest(http.MethodPatch, domainURL, buffer)
+	if err != nil {
+		return err
+	}
+
+	if err := c.executeWithBackoff("", req, nil); err != nil {
+		return err
+	}
+
+	return nil
 }
 
 // UpdateDomainRecords adds records or replaces all existing records for the provided domain

@@ -90,6 +90,10 @@ var supportedTypes = map[string]struct{}{
 	TXTType:   {},
 }
 
+type NameServers struct {
+	NameServers []string `json:"nameServers"`
+}
+
 // Domain encapsulates a domain resource
 type Domain struct {
 	ID      int64  `json:"domainId"`
