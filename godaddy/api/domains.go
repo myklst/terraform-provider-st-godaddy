@@ -219,7 +219,7 @@ func (c *Client) Purchase(domainName string, info RegisterDomainInfo, years stri
 
 	info.Consent.AgreedBy = info.ContactAdmin.NameFirst + " " + info.ContactAdmin.NameLast
 
-	ns := []string{"0.0.0.0"}
+	ns := []string{"ns27.domaincontrol.com", "ns28.domaincontrol.com"}
 	info.NameServers = ns
 
 	n, err := strconv.Atoi(years)
