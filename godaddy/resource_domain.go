@@ -4,6 +4,12 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"log"
+	"strconv"
+	"strings"
+	"terraform-provider-st-godaddy/godaddy/api"
+	"time"
+
 	"github.com/hashicorp/terraform-plugin-framework-validators/int64validator"
 	"github.com/hashicorp/terraform-plugin-framework/diag"
 	"github.com/hashicorp/terraform-plugin-framework/path"
@@ -15,11 +21,6 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/schema/validator"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 	"github.com/hashicorp/terraform-plugin-log/tflog"
-	"log"
-	"strconv"
-	"strings"
-	"terraform-provider-st-godaddy/godaddy/api"
-	"time"
 )
 
 const (
@@ -343,12 +344,12 @@ func ParseTimeAndCalculateMode(expires string, minDaysRemain int64) (string, dia
 }
 
 func fmtlog(ctx context.Context, format string, a ...any) {
-	msg := fmt.Sprintf(format, a)
+	msg := fmt.Sprintf(format, a...)
 	tflog.Info(ctx, msg)
 }
 
 func DiagnosticErrorOf(err error, format string, a ...any) diag.Diagnostic {
-	msg := fmt.Sprintf(format, a)
+	msg := fmt.Sprintf(format, a...)
 	if err != nil {
 		return diag.NewErrorDiagnostic(msg, err.Error())
 	} else {
@@ -363,7 +364,7 @@ func (r *godaddyDomainResource) readContactInfo(contact string, domainInfo *api.
 	err := json.Unmarshal([]byte(contact), &contactInfo)
 
 	if err != nil {
-		return DiagnosticErrorOf(err, "parse contact info failed!, json: ", contact)
+		return DiagnosticErrorOf(err, "parse contact info failed!, json: %s", contact)
 	}
 
 	//admin
