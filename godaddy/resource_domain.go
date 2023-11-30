@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"github.com/hashicorp/terraform-plugin-framework-validators/int64validator"
 	"github.com/hashicorp/terraform-plugin-framework/diag"
 	"github.com/hashicorp/terraform-plugin-framework/path"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
@@ -11,6 +12,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/int64default"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/planmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
+	"github.com/hashicorp/terraform-plugin-framework/schema/validator"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 	"github.com/hashicorp/terraform-plugin-log/tflog"
 	"log"
@@ -73,11 +75,14 @@ func (r *godaddyDomainResource) Schema(_ context.Context, _ resource.SchemaReque
 			},
 			"min_days_remaining": &schema.Int64Attribute{
 				MarkdownDescription: "The minimum amount of days remaining on the expiration of a domain before a " +
-					"renewal is attempted. The default is `30`. A value of less than `0` means that the domain will " +
-					"never be renewed.",
+					"renewal is attempted. The default is `30`. A negative value means that the domain will " +
+					"never be renewed. Zero value is not allowed",
 				Optional: true,
 				Computed: true,
 				Default:  int64default.StaticInt64(30),
+				Validators: []validator.Int64{
+					int64validator.NoneOf(int64(0)),
+				},
 			},
 			"purchase_years": &schema.Int64Attribute{
 				MarkdownDescription: "Number of years to purchase and renew. The default is `1`.",
@@ -311,10 +316,26 @@ func (r *godaddyDomainResource) calculateMode(plan *godaddyDomainResourceModel) 
 
 	minDaysRemain := plan.MinDaysRemaining.ValueInt64()
 	expires := res.Expires
-	const layout = "2023-09-12T05:33:45.834Z"
-	exp, _ := time.Parse(layout, expires)
+
+	return ParseTimeAndCalculateMode(expires, minDaysRemain)
+}
+
+func ParseTimeAndCalculateMode(expires string, minDaysRemain int64) (string, diag.Diagnostic) {
+	const layout = "2006-01-02T15:04:05.000Z"
+
+	exp, err := time.Parse(layout, expires)
+	if err != nil {
+		return "", DiagnosticErrorOf(err, "Time string [%s] cannot be parsed", expires)
+	}
+
 	diff := time.Until(exp)
-	if int64(diff.Hours()) < minDaysRemain*24 {
+	minDays, err := time.ParseDuration(fmt.Sprintf("%dh", minDaysRemain*24))
+
+	if err != nil {
+		return "", DiagnosticErrorOf(err, "Value of Min Days Remain [%d] is invalid", minDaysRemain)
+	}
+
+	if diff < minDays {
 		return MODE_RENEW, nil
 	}
 
