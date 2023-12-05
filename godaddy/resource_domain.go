@@ -42,6 +42,7 @@ type godaddyDomainResourceModel struct {
 	MinDaysRemaining types.Int64  `tfsdk:"min_days_remaining"`
 	Years            types.Int64  `tfsdk:"purchase_years"`
 	Contact          types.String `tfsdk:"contact"`
+	Expires          types.String `tfsdk:"expires"`
 }
 
 // Metadata returns the resource godaddy_domain type name.
@@ -95,6 +96,10 @@ func (r *godaddyDomainResource) Schema(_ context.Context, _ resource.SchemaReque
 				Description: "Contact info in json format",
 				Required:    true,
 			},
+			"expires": schema.StringAttribute{
+				Description: "The ISO 8601 string representing the expiry date of the domain",
+				Computed:    true,
+			},
 		},
 	}
 }
@@ -126,12 +131,19 @@ func (r *godaddyDomainResource) Create(ctx context.Context, req resource.CreateR
 		return
 	}
 
+	res, diag3 := r.getDomain(ctx, domain)
+	resp.Diagnostics.Append(diag3)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+
 	// Set state items
 	state := &godaddyDomainResourceModel{
 		Domain:           plan.Domain,
 		Years:            plan.Years,
 		MinDaysRemaining: plan.MinDaysRemaining,
 		Contact:          plan.Contact,
+		Expires:          types.StringValue(res.Expires),
 	}
 
 	setStateDiags := resp.State.Set(ctx, state)
@@ -155,7 +167,15 @@ func (r *godaddyDomainResource) Read(ctx context.Context, req resource.ReadReque
 
 	domain := state.Domain.ValueString()
 
-	_, err := r.client.GetDomain(domain)
+	res, err := r.client.GetDomain(domain)
+
+	state = &godaddyDomainResourceModel{
+		Domain:           state.Domain,
+		Years:            state.Years,
+		MinDaysRemaining: state.MinDaysRemaining,
+		Contact:          state.Contact,
+		Expires:          types.StringValue(res.Expires),
+	}
 
 	if err == nil {
 		setStateDiags := resp.State.Set(ctx, state)
@@ -184,7 +204,14 @@ func (r *godaddyDomainResource) Update(ctx context.Context, req resource.UpdateR
 		return
 	}
 
-	newMode, diag := r.calculateMode(plan)
+	var state *godaddyDomainResourceModel
+	getStateDiags := req.State.Get(ctx, &state)
+	resp.Diagnostics.Append(getStateDiags...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+
+	newMode, diag := r.calculateMode(state)
 	resp.Diagnostics.Append(diag)
 	if resp.Diagnostics.HasError() {
 		return
@@ -208,12 +235,19 @@ func (r *godaddyDomainResource) Update(ctx context.Context, req resource.UpdateR
 		return
 	}
 
+	res, diag3 := r.getDomain(ctx, state.Domain.ValueString())
+	resp.Diagnostics.Append(diag3)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+
 	// Set state items
-	state := &godaddyDomainResourceModel{}
+	state = &godaddyDomainResourceModel{}
 	state.Domain = plan.Domain
 	state.Years = plan.Years
 	state.MinDaysRemaining = plan.MinDaysRemaining
 	state.Contact = plan.Contact
+	state.Expires = types.StringValue(res.Expires)
 
 	setStateDiags := resp.State.Set(ctx, state)
 	resp.Diagnostics.Append(setStateDiags...)
@@ -285,6 +319,17 @@ func (r *godaddyDomainResource) createDomain(cxt context.Context, domainName str
 	return nil
 }
 
+func (r *godaddyDomainResource) getDomain(ctx context.Context, domainName string) (api.Domain, diag.Diagnostic) {
+	client := r.client
+	res, err := client.GetDomain(domainName)
+
+	if err != nil {
+		return api.Domain{}, DiagnosticErrorOf(err, "Unable to get domain [%s]", domainName)
+	} else {
+		return *res, nil
+	}
+}
+
 func (r *godaddyDomainResource) renewDomain(cxt context.Context, client *api.Client, domainName string, year int64) diag.Diagnostic {
 
 	err := client.DomainRenew(domainName, strconv.FormatInt(year, 10))
@@ -307,16 +352,9 @@ func (r *godaddyDomainResource) deleteDomain(cxt context.Context, domainName str
 	return nil
 }
 
-func (r *godaddyDomainResource) calculateMode(plan *godaddyDomainResourceModel) (string, diag.Diagnostic) {
-	domain := plan.Domain.ValueString()
-
-	res, err := r.client.GetDomain(domain)
-	if err != nil {
-		return "", DiagnosticErrorOf(err, "domain [%s] doesn't exist", domain)
-	}
-
-	minDaysRemain := plan.MinDaysRemaining.ValueInt64()
-	expires := res.Expires
+func (r *godaddyDomainResource) calculateMode(state *godaddyDomainResourceModel) (string, diag.Diagnostic) {
+	minDaysRemain := state.MinDaysRemaining.ValueInt64()
+	expires := state.Expires.ValueString()
 
 	return ParseTimeAndCalculateMode(expires, minDaysRemain)
 }
