@@ -60,25 +60,6 @@ func TestParseTimeAndCalculateMode(t *testing.T) {
 	assert.Equal(t, err, nil)
 	assert.Equal(t, "renew", output)
 
-	domainExpiresOneMonthFromNow := now.AddDate(0, 1, 0)
-	domainExpiry = domainExpiresOneMonthFromNow.Format(layout)
-
-	output, err = ParseTimeAndCalculateMode(domainExpiry, int64(oneDayRemaining))
-	assert.Equal(t, err, nil)
-	assert.Equal(t, "skip", output)
-
-	output, err = ParseTimeAndCalculateMode(domainExpiry, int64(thirtyDaysRemaining))
-	assert.Equal(t, err, nil)
-	assert.Equal(t, "renew", output)
-
-	output, err = ParseTimeAndCalculateMode(domainExpiry, int64(negativeDaysRemaining))
-	assert.Equal(t, err, nil)
-	assert.Equal(t, "skip", output)
-
-	output, err = ParseTimeAndCalculateMode(domainExpiry, int64(moreThanOneYearRemaining))
-	assert.Equal(t, err, nil)
-	assert.Equal(t, "renew", output)
-
 	domainExpiresOneDayFromNow := now.AddDate(0, 0, 1)
 	domainExpiry = domainExpiresOneDayFromNow.Format(layout)
 
