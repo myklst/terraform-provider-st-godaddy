@@ -53,7 +53,7 @@ func (r *godaddyNameServerResource) Schema(_ context.Context, _ resource.SchemaR
 				},
 			},
 			"nameservers": &schema.ListAttribute{
-				Required:    true,
+				Optional:    true,
 				ElementType: types.StringType,
 				Description: "The authoritative name server for this domain",
 				Validators: []validator.List{
