@@ -117,7 +117,7 @@ func (c *Client) UpdateNameServers(domain string, nameServers NameServers) error
 		return err
 	}
 
-	if err := c.executeWithBackoff("", req, nil); err != nil {
+	if err := c.execute("", req, nil); err != nil {
 		return err
 	}
 
