@@ -15,11 +15,13 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/path"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
+	"github.com/hashicorp/terraform-plugin-framework/resource/schema/booldefault"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/int64default"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/planmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/schema/validator"
 	"github.com/hashicorp/terraform-plugin-framework/types"
+	"github.com/hashicorp/terraform-plugin-framework/types/basetypes"
 	"github.com/hashicorp/terraform-plugin-log/tflog"
 )
 
@@ -43,6 +45,7 @@ type godaddyDomainResourceModel struct {
 	Years            types.Int64  `tfsdk:"purchase_years"`
 	Contact          types.String `tfsdk:"contact"`
 	Expires          types.String `tfsdk:"expires"`
+	Renew            types.Bool   `tfsdk:"renew"`
 }
 
 // Metadata returns the resource godaddy_domain type name.
@@ -100,6 +103,12 @@ func (r *godaddyDomainResource) Schema(_ context.Context, _ resource.SchemaReque
 				Description: "The ISO 8601 string representing the expiry date of the domain",
 				Computed:    true,
 			},
+			"renew": schema.BoolAttribute{
+				Description: "Whether to renew the domain. This is a special schema attribute used by the custom provider. Practitioners must not touch this value.",
+				Optional:    true,
+				Computed:    true,
+				Default:     booldefault.StaticBool(false),
+			},
 		},
 	}
 }
@@ -144,6 +153,7 @@ func (r *godaddyDomainResource) Create(ctx context.Context, req resource.CreateR
 		MinDaysRemaining: plan.MinDaysRemaining,
 		Contact:          plan.Contact,
 		Expires:          types.StringValue(res.Expires),
+		Renew:            types.BoolValue(false),
 	}
 
 	setStateDiags := resp.State.Set(ctx, state)
@@ -169,12 +179,32 @@ func (r *godaddyDomainResource) Read(ctx context.Context, req resource.ReadReque
 
 	res, err := r.client.GetDomain(domain)
 
+	newMode, diag := r.calculateMode(state)
+	resp.Diagnostics.Append(diag)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+	var renew bool
+
+	switch newMode {
+
+	case MODE_RENEW:
+		renew = true
+	case MODE_SKIP:
+		renew = false
+
+	default:
+		resp.Diagnostics.AddError("invalid mode value", newMode)
+		return
+	}
+
 	state = &godaddyDomainResourceModel{
 		Domain:           state.Domain,
 		Years:            state.Years,
 		MinDaysRemaining: state.MinDaysRemaining,
 		Contact:          state.Contact,
 		Expires:          types.StringValue(res.Expires),
+		Renew:            basetypes.NewBoolValue(renew),
 	}
 
 	if err == nil {
@@ -211,28 +241,13 @@ func (r *godaddyDomainResource) Update(ctx context.Context, req resource.UpdateR
 		return
 	}
 
-	newMode, diag := r.calculateMode(state)
-	resp.Diagnostics.Append(diag)
-	if resp.Diagnostics.HasError() {
-		return
-	}
-	fmtlog(ctx, "CalculateMode Complete,Mode = %s", newMode)
-	newDomain := plan.Domain.ValueString()
-	newYear := plan.Years.ValueInt64()
-
-	switch newMode {
-
-	case MODE_RENEW:
-		diag := r.renewDomain(ctx, r.client, newDomain, newYear)
+	if state.Renew.ValueBool() {
+		fmtlog(ctx, "CalculateMode Complete,Renew = %s", state.Renew.String())
+		diag := r.renewDomain(ctx, r.client, plan.Domain.ValueString(), plan.Years.ValueInt64())
 		resp.Diagnostics.Append(diag)
 		if resp.Diagnostics.HasError() {
 			return
 		}
-	case MODE_SKIP:
-
-	default:
-		resp.Diagnostics.AddError("invalid mode value", newMode)
-		return
 	}
 
 	res, diag3 := r.getDomain(ctx, state.Domain.ValueString())
@@ -248,6 +263,7 @@ func (r *godaddyDomainResource) Update(ctx context.Context, req resource.UpdateR
 	state.MinDaysRemaining = plan.MinDaysRemaining
 	state.Contact = plan.Contact
 	state.Expires = types.StringValue(res.Expires)
+	state.Renew = types.BoolValue(false)
 
 	setStateDiags := resp.State.Set(ctx, state)
 	resp.Diagnostics.Append(setStateDiags...)
