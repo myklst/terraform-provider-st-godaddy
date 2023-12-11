@@ -47,3 +47,13 @@ Local Installation
 
     }
     ```
+
+Notes
+-----
+1. Changing purchase years will not affect past purchases. Will only affect future purchases
+2. OTE environment behaviour -> Some country's IP cannot perform purchase and renew domain.
+   All other API calls are allowed. A VPN is required to perform purchase and renew.
+3. OTE name server behaviour is broken. Dont create ns_binding resource for OTE.
+4. Domains purchased on OTE have the same lifecycle as production.
+5. The same domain, once purchased on OTE, can still be purchased on production.
+6. OTE is pre-funded with $10,000 credit.
