@@ -31,4 +31,7 @@ resource "st-godaddy_nameserver_attachment" "some_custom_nameservers" {
 ### Required
 
 - `domain` (String) Domain name to manage in NameCheap
+
+### Optional
+
 - `nameservers` (List of String) The authoritative name server for this domain

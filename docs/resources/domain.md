@@ -31,5 +31,10 @@ resource "st-godaddy_domain" "domain-com" {
 
 ### Optional
 
-- `min_days_remaining` (Number) The minimum amount of days remaining on the expiration of a domain before a renewal is attempted. The default is `30`. A value of less than `0` means that the domain will never be renewed.
+- `min_days_remaining` (Number) The minimum amount of days remaining on the expiration of a domain before a renewal is attempted. The default is `30`. A negative value means that the domain will never be renewed. Zero value is not allowed
 - `purchase_years` (Number) Number of years to purchase and renew. The default is `1`.
+- `renew` (Boolean) Whether to renew the domain. This is a special schema attribute used by the custom provider. Practitioners must not touch this value.
+
+### Read-Only
+
+- `expires` (String) The ISO 8601 string representing the expiry date of the domain
