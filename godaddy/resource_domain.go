@@ -3,6 +3,7 @@ package godaddy_provider
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"log"
 	"strconv"
@@ -10,6 +11,7 @@ import (
 	"terraform-provider-st-godaddy/godaddy/api"
 	"time"
 
+	"github.com/cenkalti/backoff/v4"
 	"github.com/hashicorp/terraform-plugin-framework-validators/int64validator"
 	"github.com/hashicorp/terraform-plugin-framework/diag"
 	"github.com/hashicorp/terraform-plugin-framework/path"
@@ -179,32 +181,13 @@ func (r *godaddyDomainResource) Read(ctx context.Context, req resource.ReadReque
 
 	res, err := r.client.GetDomain(domain)
 
-	newMode, diag := r.calculateMode(state)
-	resp.Diagnostics.Append(diag)
-	if resp.Diagnostics.HasError() {
-		return
-	}
-	var renew bool
-
-	switch newMode {
-
-	case MODE_RENEW:
-		renew = true
-	case MODE_SKIP:
-		renew = false
-
-	default:
-		resp.Diagnostics.AddError("invalid mode value", newMode)
-		return
-	}
-
 	state = &godaddyDomainResourceModel{
 		Domain:           state.Domain,
 		Years:            state.Years,
 		MinDaysRemaining: state.MinDaysRemaining,
 		Contact:          state.Contact,
 		Expires:          types.StringValue(res.Expires),
-		Renew:            basetypes.NewBoolValue(renew),
+		Renew:            basetypes.NewBoolValue(false),
 	}
 
 	if err == nil {
@@ -220,6 +203,31 @@ func (r *godaddyDomainResource) Read(ctx context.Context, req resource.ReadReque
 		} else {
 			resp.Diagnostics.AddError("Get domain info error ", err.Error())
 		}
+	}
+
+	newMode, diag := r.calculateMode(state)
+	resp.Diagnostics.Append(diag)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+	var renew bool
+
+	switch newMode {
+
+	case MODE_RENEW:
+		renew = true
+		state.Renew = types.BoolValue(renew)
+		setStateDiags := resp.State.Set(ctx, state)
+		resp.Diagnostics.Append(setStateDiags...)
+		if resp.Diagnostics.HasError() {
+			return
+		}
+	case MODE_SKIP:
+		renew = false
+
+	default:
+		resp.Diagnostics.AddError("invalid mode value", newMode)
+		return
 	}
 }
 
@@ -250,7 +258,39 @@ func (r *godaddyDomainResource) Update(ctx context.Context, req resource.UpdateR
 		}
 	}
 
-	res, diag3 := r.getDomain(ctx, state.Domain.ValueString())
+	var res api.Domain
+	var diag3 diag.Diagnostic
+
+	operation := func() error {
+		res, diag3 = r.getDomain(ctx, state.Domain.ValueString())
+
+		const layout string = "2006-01-02T15:04:05.000Z"
+		timeFromAPI, apiTimeErr := time.Parse(layout, res.Expires)
+		timeFromStateFile, stateFileTimeErr := time.Parse(layout, state.Expires.ValueString())
+
+		if apiTimeErr != nil {
+			return apiTimeErr
+		}
+
+		if stateFileTimeErr != nil {
+			return stateFileTimeErr
+		}
+
+		if timeFromAPI.After(timeFromStateFile) {
+			return nil
+		} else {
+			log.Println("domain expiry time is not yet updated")
+			return errors.New("domain expiry time is not yet updated")
+		}
+	}
+
+	err := backoff.Retry(operation, backoff.NewExponentialBackOff())
+
+	if err != nil {
+		resp.Diagnostics.AddError(err.Error(), err.Error())
+		return
+	}
+
 	resp.Diagnostics.Append(diag3)
 	if resp.Diagnostics.HasError() {
 		return
