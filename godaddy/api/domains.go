@@ -237,7 +237,7 @@ func (c *Client) Purchase(domainName string, info RegisterDomainInfo, years stri
 	}
 	//response
 	var resp DomainPurchaseResponse
-	if err := c.executeWithBackoff("", req, &resp); err != nil {
+	if err := c.execute("", req, &resp); err != nil {
 		return err
 	}
 
@@ -263,7 +263,7 @@ func (c *Client) DomainRenew(domain string, years string) error {
 	//response
 	var resp DomainPurchaseResponse
 	//do request
-	if err := c.executeWithBackoff("", req, &resp); err != nil {
+	if err := c.execute("", req, &resp); err != nil {
 		return err
 	}
 
@@ -279,7 +279,7 @@ func (c *Client) DomainCancel(domain string) error {
 		return err
 	}
 	//do request
-	if err := c.executeWithBackoff("", req, nil); err != nil {
+	if err := c.execute("", req, nil); err != nil {
 		return err
 	}
 
