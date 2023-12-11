@@ -142,7 +142,27 @@ func (r *godaddyDomainResource) Create(ctx context.Context, req resource.CreateR
 		return
 	}
 
-	res, diag3 := r.getDomain(ctx, domain)
+	var res api.Domain
+	var diag3 diag.Diagnostic
+
+	operation := func() error {
+		res, diag3 = r.getDomain(ctx, domain)
+
+		if  res.Status == "ACTIVE" {
+			return nil
+		} else {
+			log.Println("")
+			return errors.New("")
+		}
+	}
+
+	err := backoff.Retry(operation, backoff.NewExponentialBackOff())
+
+	if err != nil {
+		resp.Diagnostics.AddError(err.Error(), err.Error())
+		return
+	}
+
 	resp.Diagnostics.Append(diag3)
 	if resp.Diagnostics.HasError() {
 		return

@@ -87,8 +87,7 @@ func NewClient(baseURL, key, secret string) (*Client, error) {
 func (c *Client) executeWithBackoff(customerID string, req *http.Request, result interface{}) error {
 
 	operation := func() error {
-		var err error
-		err = c.execute(customerID, req, result)
+		err := c.execute(customerID, req, result)
 		return err
 	}
 
