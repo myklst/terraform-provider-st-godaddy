@@ -13,12 +13,6 @@ import (
 var key, secret, baseURL string
 
 func init() {
-	/*
-		key = os.Getenv("GODADDY_API_KEY")
-		secret = os.Getenv("GODADDY_API_SECRET")
-		baseURL = "https://api.godaddy.com"
-	*/
-
 	key = "3mM44UdB63ixBA_tSx4tP52257DiFPnjutMU"
 	secret = "P4KptM8XDHWhNoDUMjQiX4"
 	baseURL = "https://api.ote-godaddy.com"

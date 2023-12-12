@@ -373,19 +373,6 @@ func (r *godaddyDomainResource) createDomain(cxt context.Context, domainName str
 		return DiagnosticErrorOf(nil, "[%s] is not available!", domainName)
 	}
 
-	//extract tld
-	/*
-		tld, _, err := gotld.GetTld(domainName)
-		agreement, err := client.GetAgreement(tld.Tld, false)
-		if err != nil {
-			return DiagnosticErrorOf(err, "GetAgreement for  [%s] failed!!", domainName)
-		}
-		//construct agreement keys
-		var agreementKeys []string
-		for _, v := range agreement {
-			agreementKeys = append(agreementKeys, v.AgreementKey)
-		}*/
-
 	err = client.Purchase(domainName, _domainInfo, strconv.FormatInt(year, 10))
 
 	if err != nil {
@@ -482,27 +469,9 @@ func (r *godaddyDomainResource) readContactInfo(contact string, domainInfo *api.
 		return DiagnosticErrorOf(err, "parse contact info failed!, json: %s", contact)
 	}
 
-	//admin
 	domainInfo.ContactAdmin = contactInfo
-	//ContactBilling
 	domainInfo.ContactBilling = contactInfo
-	//reg
 	domainInfo.ContactRegistrant = contactInfo
-	//tech
 	domainInfo.ContactTech = contactInfo
-
-	/*  for debug
-	log.Println(domainInfo.ContactAdmin.NameLast)
-	log.Println(domainInfo.ContactAdmin.NameFirst)
-	log.Println(domainInfo.ContactAdmin.Phone)
-	log.Println(domainInfo.ContactAdmin.Fax)
-	log.Println(domainInfo.ContactAdmin.Organization)
-	log.Println(domainInfo.ContactAdmin.NameMiddle)
-	log.Println(domainInfo.ContactAdmin.JobTitle)
-	log.Println(domainInfo.ContactAdmin.Email)
-	log.Println(domainInfo.ContactAdmin.AddressMailing.Address1)
-	log.Println(domainInfo.ContactAdmin.AddressMailing.Country)
-	*/
-
 	return nil
 }
