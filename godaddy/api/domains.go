@@ -223,6 +223,9 @@ func (c *Client) Purchase(domainName string, info RegisterDomainInfo, years stri
 	info.NameServers = ns
 
 	n, err := strconv.Atoi(years)
+	if err != nil {
+		return err
+	}
 	info.Period = n
 	info.RenewAuto = autoRenew
 	info.Privacy = false
@@ -249,6 +252,9 @@ func (c *Client) DomainRenew(domain string, years string) error {
 	domainURL := fmt.Sprintf(pathDomainRenew, c.baseURL, domain)
 	//request
 	n, err := strconv.Atoi(years)
+	if err != nil {
+		return err
+	}
 	var info DomainRenew
 	info.Period = n
 	msg, err := json.Marshal(info)

@@ -47,7 +47,7 @@ func (t *rateLimitedTransport) RoundTrip(req *http.Request) (*http.Response, err
 	defer t.Unlock()
 
 	if t.throttle.After(time.Now()) {
-		delta := t.throttle.Sub(time.Now())
+		delta := time.Until(t.throttle)
 		time.Sleep(delta)
 	}
 

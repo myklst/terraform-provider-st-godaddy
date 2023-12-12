@@ -47,7 +47,7 @@ func (r *godaddyNameServerResource) Schema(_ context.Context, _ resource.SchemaR
 		Description: "Manage the nameservers of a domain in Godaddy",
 		Attributes: map[string]schema.Attribute{
 			"domain": &schema.StringAttribute{
-				Description: "Domain name to manage in NameCheap",
+				Description: "Domain name to manage in Godaddy",
 				Required:    true,
 				PlanModifiers: []planmodifier.String{
 					stringplanmodifier.RequiresReplace(),
