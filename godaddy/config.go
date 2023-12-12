@@ -2,7 +2,7 @@ package godaddy_provider
 
 import (
 	"fmt"
-	"terraform-provider-st-godaddy/godaddy/api"
+	"github.com/myklst/terraform-provider-st-godaddy/godaddy/api"
 )
 
 // Config provides the provider's configuration

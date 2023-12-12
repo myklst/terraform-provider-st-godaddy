@@ -3,14 +3,14 @@ package main
 
 import (
 	"context"
-	"github.com/hashicorp/terraform-plugin-framework/providerserver"
 	"os"
-	"terraform-provider-st-godaddy/godaddy"
+
+	"github.com/hashicorp/terraform-plugin-framework/providerserver"
+	godaddy_provider "github.com/myklst/terraform-provider-st-godaddy/godaddy"
 )
 
 // Generate the Terraform provider documentation using `tfplugindocs`:
 //go:generate go run github.com/hashicorp/terraform-plugin-docs/cmd/tfplugindocs
-
 func main() {
 	providerAddress := os.Getenv("PROVIDER_LOCAL_PATH")
 	if providerAddress == "" {

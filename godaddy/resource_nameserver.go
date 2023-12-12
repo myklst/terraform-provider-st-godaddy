@@ -2,7 +2,8 @@ package godaddy_provider
 
 import (
 	"context"
-	"terraform-provider-st-godaddy/godaddy/api"
+
+	"github.com/myklst/terraform-provider-st-godaddy/godaddy/api"
 
 	"github.com/hashicorp/terraform-plugin-framework-validators/listvalidator"
 	"github.com/hashicorp/terraform-plugin-framework/attr"

@@ -8,8 +8,9 @@ import (
 	"log"
 	"strconv"
 	"strings"
-	"terraform-provider-st-godaddy/godaddy/api"
 	"time"
+
+	"github.com/myklst/terraform-provider-st-godaddy/godaddy/api"
 
 	"github.com/cenkalti/backoff/v4"
 	"github.com/hashicorp/terraform-plugin-framework-validators/int64validator"
