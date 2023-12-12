@@ -151,8 +151,8 @@ func (r *godaddyDomainResource) Create(ctx context.Context, req resource.CreateR
 		if  res.Status == "ACTIVE" {
 			return nil
 		} else {
-			log.Println("")
-			return errors.New("")
+			log.Println("domain expiry time is not yet in ACTIVE state")
+			return errors.New("domain expiry time is not yet in ACTIVE state")
 		}
 	}
 
