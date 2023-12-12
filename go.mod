@@ -1,4 +1,4 @@
-module terraform-provider-st-godaddy
+module github.com/myklst/terraform-provider-st-godaddy
 
 require (
 	github.com/mattn/go-colorable v0.1.13 // indirect
