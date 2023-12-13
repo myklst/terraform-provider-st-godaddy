@@ -9,6 +9,8 @@ import (
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/cenkalti/backoff/v4"
 )
 
 const (
@@ -240,11 +242,30 @@ func (c *Client) Purchase(domainName string, info RegisterDomainInfo, years stri
 	}
 	//response
 	var resp DomainPurchaseResponse
-	if err := c.execute("", req, &resp); err != nil {
-		return err
+	operation := func() error {
+		err := c.execute("", req, &resp)
+		if err != nil {
+
+			// Domain purchase API call returned UNAVAILABLE_DOMAIN error
+			// Backoff retry does not make sense for this error.
+			// Return a permanent error to break out of the retry loop.
+			if strings.Contains(err.Error(), "UNAVAILABLE_DOMAIN") {
+				return &backoff.PermanentError{Err: err}
+			}
+
+			return err
+		}
+
+		return nil
 	}
 
-	return nil
+	err = backoff.Retry(operation, backoff.NewExponentialBackOff())
+
+	if err != nil {
+		return err
+	} else {
+		return nil
+	}
 }
 
 func (c *Client) DomainRenew(domain string, years string) error {
@@ -269,6 +290,8 @@ func (c *Client) DomainRenew(domain string, years string) error {
 	//response
 	var resp DomainPurchaseResponse
 	//do request
+	// Since the end user has to manually apply the changes to trigger a renew
+	// Backoff retry is not needded here
 	if err := c.execute("", req, &resp); err != nil {
 		return err
 	}
@@ -285,7 +308,7 @@ func (c *Client) DomainCancel(domain string) error {
 		return err
 	}
 	//do request
-	if err := c.execute("", req, nil); err != nil {
+	if err := c.executeWithBackoff("", req, nil); err != nil {
 		return err
 	}
 
