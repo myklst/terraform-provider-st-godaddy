@@ -149,7 +149,7 @@ func (r *godaddyDomainResource) Create(ctx context.Context, req resource.CreateR
 	operation := func() error {
 		res, diag3 = r.getDomain(ctx, domain)
 
-		if  res.Status == "ACTIVE" {
+		if res.Status == "ACTIVE" {
 			return nil
 		} else {
 			log.Println("domain expiry time is not yet in ACTIVE state")
