@@ -110,7 +110,8 @@ func (r *godaddyDomainResource) Schema(_ context.Context, _ resource.SchemaReque
 			"price_limit": schema.Int64Attribute{
 				MarkdownDescription: "The maximum price user is willing to pay (in US Dollars) for a domain purchase." +
 					"NOTE: Due to API limitations, price limit does not affect renew action",
-				Required: true,
+				Optional: true,
+				Computed: true,
 			},
 			"renew": schema.BoolAttribute{
 				MarkdownDescription: "Whether to renew the domain. This is a special schema attribute used " +
@@ -160,8 +161,8 @@ func (r *godaddyDomainResource) Create(ctx context.Context, req resource.CreateR
 		if res.Status == "ACTIVE" {
 			return nil
 		} else {
-			log.Println("domain expiry time is not yet in ACTIVE state")
-			return errors.New("domain expiry time is not yet in ACTIVE state")
+			log.Println("domain is not yet in ACTIVE state")
+			return errors.New("domain is not yet in ACTIVE state")
 		}
 	}
 
@@ -184,6 +185,7 @@ func (r *godaddyDomainResource) Create(ctx context.Context, req resource.CreateR
 		MinDaysRemaining: plan.MinDaysRemaining,
 		Contact:          plan.Contact,
 		Expires:          types.StringValue(res.Expires),
+		PriceLimit:       plan.PriceLimit,
 		Renew:            types.BoolValue(false),
 	}
 
@@ -216,6 +218,7 @@ func (r *godaddyDomainResource) Read(ctx context.Context, req resource.ReadReque
 		MinDaysRemaining: state.MinDaysRemaining,
 		Contact:          state.Contact,
 		Expires:          types.StringValue(res.Expires),
+		PriceLimit:       state.PriceLimit,
 		Renew:            basetypes.NewBoolValue(false),
 	}
 
@@ -332,6 +335,7 @@ func (r *godaddyDomainResource) Update(ctx context.Context, req resource.UpdateR
 	state.MinDaysRemaining = plan.MinDaysRemaining
 	state.Contact = plan.Contact
 	state.Expires = types.StringValue(res.Expires)
+	state.PriceLimit = plan.PriceLimit
 	state.Renew = types.BoolValue(false)
 
 	setStateDiags := resp.State.Set(ctx, state)
