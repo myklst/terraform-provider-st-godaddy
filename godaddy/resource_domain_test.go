@@ -79,3 +79,35 @@ func TestParseTimeAndCalculateMode(t *testing.T) {
 	assert.Equal(t, err, nil)
 	assert.Equal(t, "renew", output)
 }
+
+func TestCalculatePrice(t *testing.T) {
+
+	// Price of a domain on OTE / Testing environment
+	var priceFromAPI int64 = 10690000
+	var maxPrice int64 = 11
+
+	err := calculatePrice(priceFromAPI, maxPrice)
+	assert.Equal(t, err, nil)
+
+	// Price of a .com domain is usually his price on production environment
+	priceFromAPI = 11990000
+	maxPrice = 11
+
+	err = calculatePrice(priceFromAPI, maxPrice)
+	assert.NotEqual(t, err, nil)
+	assert.Equal(t, err.Error(), "domain overpriced")
+
+	// Set the max price allowed to 12 USD, to test for nil error case
+	maxPrice = 12
+	err = calculatePrice(priceFromAPI, maxPrice)
+	assert.Equal(t, err, nil)
+}
+
+func TestConvertPricetoAPIPriceUnits(t *testing.T) {
+
+	var priceFromAPI int64 = 11000000
+	var userInput int64 = 11
+
+	output := convertPricetoAPIPriceUnits(userInput)
+	assert.Equal(t, output, priceFromAPI)
+}

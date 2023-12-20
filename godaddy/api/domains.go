@@ -170,11 +170,11 @@ func (c *Client) domainRecordsOfType(t string, records []*DomainRecord) []*Domai
 	return typeRecords
 }
 
-func (c *Client) DomainAvailable(domainNames []string) (bool, error) {
+func (c *Client) DomainAvailable(domainNames []string) (DomainAvailable, error) {
 
 	msg, err := json.Marshal(domainNames)
 	if err != nil {
-		return false, err
+		return DomainAvailable{}, err
 	}
 
 	domainURL := fmt.Sprintf(pathAvailable, c.baseURL)
@@ -182,14 +182,14 @@ func (c *Client) DomainAvailable(domainNames []string) (bool, error) {
 
 	req, err := http.NewRequest(http.MethodPost, domainURL, buffer)
 	if err != nil {
-		return false, err
+		return DomainAvailable{}, err
 	}
 	var resp AvailableResp
 	if err := c.executeWithBackoff("", req, &resp); err != nil {
-		return false, err
+		return DomainAvailable{}, err
 	}
 
-	return resp.DomainAvailable[0].Available, nil
+	return resp.DomainAvailable[0], nil
 }
 
 // Retrieve the legal agreement(s) required to purchase the specified TLD and add-ons

@@ -117,8 +117,10 @@ type DomainRecord struct {
 
 type DomainAvailable struct {
 	Available  bool   `json:"available"`
+	Currency   string `json:"currency"`
 	Domain     string `json:"domain"`
 	Definitive bool   `json:"definitive"`
+	Price      int    `json:"price"`
 }
 
 type AvailableResp struct {

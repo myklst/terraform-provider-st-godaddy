@@ -48,6 +48,7 @@ type godaddyDomainResourceModel struct {
 	Years            types.Int64  `tfsdk:"purchase_years"`
 	Contact          types.String `tfsdk:"contact"`
 	Expires          types.String `tfsdk:"expires"`
+	PriceLimit       types.Int64  `tfsdk:"price_limit"`
 	Renew            types.Bool   `tfsdk:"renew"`
 }
 
@@ -106,11 +107,17 @@ func (r *godaddyDomainResource) Schema(_ context.Context, _ resource.SchemaReque
 				Description: "The ISO 8601 string representing the expiry date of the domain",
 				Computed:    true,
 			},
+			"price_limit": schema.Int64Attribute{
+				MarkdownDescription: "The maximum price user is willing to pay (in US Dollars) for a domain purchase." +
+					"NOTE: Due to API limitations, price limit does not affect renew action",
+				Required: true,
+			},
 			"renew": schema.BoolAttribute{
-				Description: "Whether to renew the domain. This is a special schema attribute used by the custom provider. Practitioners must not touch this value.",
-				Optional:    true,
-				Computed:    true,
-				Default:     booldefault.StaticBool(false),
+				MarkdownDescription: "Whether to renew the domain. This is a special schema attribute used " +
+					"by the custom provider. Practitioners must not touch this value.",
+				Optional: true,
+				Computed: true,
+				Default:  booldefault.StaticBool(false),
 			},
 		},
 	}
@@ -130,6 +137,7 @@ func (r *godaddyDomainResource) Create(ctx context.Context, req resource.CreateR
 	domain := plan.Domain.ValueString()
 	years := plan.Years.ValueInt64()
 	contact := plan.Contact.ValueString()
+	maxPrice := plan.PriceLimit.ValueInt64()
 
 	var contactInfo api.RegisterDomainInfo
 	diag1 := r.readContactInfo(contact, &contactInfo)
@@ -137,7 +145,7 @@ func (r *godaddyDomainResource) Create(ctx context.Context, req resource.CreateR
 	if resp.Diagnostics.HasError() {
 		return
 	}
-	diag2 := r.createDomain(ctx, domain, years, contactInfo)
+	diag2 := r.createDomain(ctx, domain, years, contactInfo, maxPrice)
 	resp.Diagnostics.Append(diag2)
 	if resp.Diagnostics.HasError() {
 		return
@@ -359,18 +367,25 @@ func (r *godaddyDomainResource) Delete(ctx context.Context, req resource.DeleteR
 	resp.State.RemoveResource(ctx)
 }
 
-func (r *godaddyDomainResource) createDomain(cxt context.Context, domainName string, year int64, _domainInfo api.RegisterDomainInfo) diag.Diagnostic {
+func (r *godaddyDomainResource) createDomain(cxt context.Context, domainName string, year int64, _domainInfo api.RegisterDomainInfo, maxPrice int64) diag.Diagnostic {
 
 	client := r.client
 	var domains []string
 	domains = append(domains, domainName)
 	log.Println("domain", domainName, "do not exist, check whether it's available to purchase....")
-	available, err := client.DomainAvailable(domains)
+	domain, err := client.DomainAvailable(domains)
 	if err != nil {
-		return DiagnosticErrorOf(err, "DomainAvailable for [%s] failed!!", domainName)
+		return DiagnosticErrorOf(err, "DomainAvailable for [%s] errored!!", domainName)
 	}
-	if !available {
+
+	if !domain.Available {
 		return DiagnosticErrorOf(nil, "[%s] is not available!", domainName)
+	}
+
+	err = calculatePrice(int64(domain.Price), maxPrice)
+	if err != nil {
+		fmtlog(cxt, "Domain [%s] overpriced!", domainName)
+		return DiagnosticErrorOf(err, "Domain price from API [%v units] is more than max price [%v units]. Aborting purchase.", int64(domain.Price), convertPricetoAPIPriceUnits(maxPrice))
 	}
 
 	err = client.Purchase(domainName, _domainInfo, strconv.FormatInt(year, 10))
@@ -443,6 +458,21 @@ func ParseTimeAndCalculateMode(expires string, minDaysRemain int64) (string, dia
 	}
 
 	return MODE_SKIP, nil
+}
+
+func calculatePrice(priceFromAPI int64, maxPrice int64) error {
+	maxPriceInUnits := convertPricetoAPIPriceUnits(maxPrice)
+	tooExpensive := priceFromAPI > maxPriceInUnits
+
+	if tooExpensive {
+		return errors.New("domain overpriced")
+	}
+
+	return nil
+}
+
+func convertPricetoAPIPriceUnits(price int64) int64 {
+	return price * 1000000
 }
 
 func fmtlog(ctx context.Context, format string, a ...any) {
