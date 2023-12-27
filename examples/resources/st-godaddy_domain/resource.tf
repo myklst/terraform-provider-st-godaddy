@@ -27,8 +27,3 @@ resource "st-godaddy_domain" "domain" {
   min_days_remaining = 90
   contact            = local.contact
 }
-
-output "domain_name" {
-  description = "Domain name to maintain"
-  value       = st-godaddy_domain.domain.domain
-}

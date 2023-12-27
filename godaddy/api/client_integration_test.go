@@ -5,6 +5,7 @@ package api
 
 import (
 	"fmt"
+	"os"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -13,10 +14,9 @@ import (
 var key, secret, baseURL string
 
 func init() {
-	key = "3mM44UdB63ixBA_tSx4tP52257DiFPnjutMU"
-	secret = "P4KptM8XDHWhNoDUMjQiX4"
-	baseURL = "https://api.ote-godaddy.com"
-
+	key = os.Getenv("GODADDY_API_KEY")
+	secret = os.Getenv("GODADDY_API_SECRET")
+	baseURL = "https://api.ote-godaddy.com"  // Prod: "https://api.godaddy.com"
 }
 
 func TestInvalidUrl(t *testing.T) {
