@@ -14,7 +14,7 @@ Manage the nameservers of a domain in Godaddy
 
 ```terraform
 resource "st-godaddy_domain" "domain" {
-  domain             = "sige-test11.com"
+  domain             = "example.com"
   purchase_years     = 1
   min_days_remaining = 90
   contact = jsonencode(

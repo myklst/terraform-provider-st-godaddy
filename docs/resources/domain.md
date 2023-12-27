@@ -37,15 +37,10 @@ locals {
 }
 
 resource "st-godaddy_domain" "domain" {
-  domain             = "sige-test11.com"
+  domain             = "example.com"
   purchase_years     = 1
   min_days_remaining = 90
   contact            = local.contact
-}
-
-output "domain_name" {
-  description = "Domain name to maintain"
-  value       = st-godaddy_domain.domain.domain
 }
 ```
 
@@ -60,6 +55,7 @@ output "domain_name" {
 ### Optional
 
 - `min_days_remaining` (Number) The minimum amount of days remaining on the expiration of a domain before a renewal is attempted. The default is `30`. A negative value means that the domain will never be renewed. Zero value is not allowed
+- `price_limit` (Number) The maximum price user is willing to pay (in US Dollars) for a domain purchase.NOTE: Due to API limitations, price limit does not affect renew action
 - `purchase_years` (Number) Number of years to purchase and renew. The default is `1`.
 - `renew` (Boolean) Whether to renew the domain. This is a special schema attribute used by the custom provider. Practitioners must not touch this value.
 
