@@ -3,12 +3,12 @@
 page_title: "st-godaddy_domain Resource - terraform-provider-st-godaddy"
 subcategory: ""
 description: |-
-  Manage a domain in Godaddy
+  Manage a domain in GoDaddy
 ---
 
 # st-godaddy_domain (Resource)
 
-Manage a domain in Godaddy
+Manage a domain in GoDaddy
 
 ## Example Usage
 

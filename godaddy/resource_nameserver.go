@@ -44,10 +44,10 @@ func (r *godaddyNameServerResource) Configure(_ context.Context, req resource.Co
 
 func (r *godaddyNameServerResource) Schema(_ context.Context, _ resource.SchemaRequest, resp *resource.SchemaResponse) {
 	resp.Schema = schema.Schema{
-		Description: "Manage the nameservers of a domain in Godaddy",
+		Description: "Manage the nameservers of a domain in GoDaddy",
 		Attributes: map[string]schema.Attribute{
 			"domain": &schema.StringAttribute{
-				Description: "Domain name to manage in Godaddy",
+				Description: "Domain name to manage in GoDaddy",
 				Required:    true,
 				PlanModifiers: []planmodifier.String{
 					stringplanmodifier.RequiresReplace(),

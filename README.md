@@ -1,11 +1,11 @@
 terraform-provider-st-godaddy
-===============================
+=============================
 
-A Terraform Provider for Godaddy domain management.
+A Terraform Provider for GoDaddy domain management.
 
 ## Prerequisites
 
-First you'll need to apply for API access to Godaddy. You can do that on
+First you'll need to apply for API access to GoDaddy. You can do that on
 this [API admin page](https://developer.godaddy.com/getstarted).
 
 Once you've done that, make note of the API key, your
@@ -21,8 +21,8 @@ Supported Versions
 Requirements
 ------------
 
--	[Terraform](https://www.terraform.io/downloads.html) 1.3.x
--	[Go](https://golang.org/doc/install) 1.19 (to build the provider plugin)
+- [Terraform](https://www.terraform.io/downloads.html) 1.3.x
+- [Go](https://golang.org/doc/install) 1.19 (to build the provider plugin)
 
 Local Installation
 ------------------
@@ -34,17 +34,16 @@ Local Installation
     ```
     terraform {
       required_providers {
-        st-alicloud = {
+        st-godaddy = {
           source = "example.local/myklst/st-godaddy"
         }
       }
     }
 
     provider "st-godaddy" {
-        baseurl   = "XXX"
-        key    = "XXX"
-        secret     = "XXXX"
-
+      baseurl = "XXX"
+      key     = "XXX"
+      secret  = "XXXX"
     }
     ```
 

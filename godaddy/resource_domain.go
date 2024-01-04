@@ -73,7 +73,7 @@ func (r *godaddyDomainResource) ImportState(ctx context.Context, req resource.Im
 // Schema defines the schema for the godaddy_domain resource.
 func (r *godaddyDomainResource) Schema(_ context.Context, _ resource.SchemaRequest, resp *resource.SchemaResponse) {
 	resp.Schema = schema.Schema{
-		Description: "Manage a domain in Godaddy",
+		Description: "Manage a domain in GoDaddy",
 		Attributes: map[string]schema.Attribute{
 			"domain": &schema.StringAttribute{
 				Description: "Domain name to manage in NameCheap",

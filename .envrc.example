@@ -1,0 +1,5 @@
+#!/usr/bin/env bash
+
+export GODADDY_BASE_URL=""
+export GODADDY_API_KEY=""
+export GODADDY_API_SECRET=""

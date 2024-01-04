@@ -3,12 +3,12 @@
 page_title: "st-godaddy_nameserver_attachment Resource - terraform-provider-st-godaddy"
 subcategory: ""
 description: |-
-  Manage the nameservers of a domain in Godaddy
+  Manage the nameservers of a domain in GoDaddy
 ---
 
 # st-godaddy_nameserver_attachment (Resource)
 
-Manage the nameservers of a domain in Godaddy
+Manage the nameservers of a domain in GoDaddy
 
 ## Example Usage
 
@@ -54,7 +54,7 @@ resource "st-godaddy_nameserver_attachment" "ns" {
 
 ### Required
 
-- `domain` (String) Domain name to manage in Godaddy
+- `domain` (String) Domain name to manage in GoDaddy
 
 ### Optional
 
