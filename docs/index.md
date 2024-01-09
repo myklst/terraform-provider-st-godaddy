@@ -3,12 +3,12 @@
 page_title: "st-godaddy Provider"
 subcategory: ""
 description: |-
-  The godaddy domain provider is used to interact with the godaddy to manage domains from it. The provider needs to be configured with the proper credentials before it can be used.
+  This provider is used to interact with the GoDaddy to manage domains from it. The provider needs to be configured with the proper credentials before it can be used.
 ---
 
 # st-godaddy Provider
 
-The godaddy domain provider is used to interact with the godaddy to manage domains from it. The provider needs to be configured with the proper credentials before it can be used.
+This provider is used to interact with the GoDaddy to manage domains from it. The provider needs to be configured with the proper credentials before it can be used.
 
 ## Example Usage
 
@@ -34,6 +34,6 @@ provider "st-godaddy" {
 
 ### Required
 
-- `baseurl` (String, Sensitive) GoDaddy Base Url(defaults to production).
-- `key` (String) GoDaddy API Key.
-- `secret` (String) GoDaddy API Secret.
+- `baseurl` (String) GoDaddy Base Url(defaults to production).
+- `key` (String, Sensitive) GoDaddy API Key.
+- `secret` (String, Sensitive) GoDaddy API Secret.

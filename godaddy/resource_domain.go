@@ -103,15 +103,15 @@ func (r *godaddyDomainResource) Schema(_ context.Context, _ resource.SchemaReque
 				Description: "Contact info in json format",
 				Required:    true,
 			},
-			"expires": schema.StringAttribute{
-				Description: "The ISO 8601 string representing the expiry date of the domain",
-				Computed:    true,
-			},
 			"price_limit": schema.Int64Attribute{
 				MarkdownDescription: "The maximum price user is willing to pay (in US Dollars) for a domain purchase." +
 					"NOTE: Due to API limitations, price limit does not affect renew action",
 				Optional: true,
 				Computed: true,
+			},
+			"expires": schema.StringAttribute{
+				Description: "The ISO 8601 string representing the expiry date of the domain",
+				Computed:    true,
 			},
 			"renew": schema.BoolAttribute{
 				MarkdownDescription: "Whether to renew the domain. This is a special schema attribute used " +
@@ -126,8 +126,8 @@ func (r *godaddyDomainResource) Schema(_ context.Context, _ resource.SchemaReque
 
 // Create a new godaddy_domain resource
 func (r *godaddyDomainResource) Create(ctx context.Context, req resource.CreateRequest, resp *resource.CreateResponse) {
-
 	fmtlog(ctx, "[resourceDomainCreate!]")
+
 	var plan *godaddyDomainResourceModel
 	getPlanDiags := req.Plan.Get(ctx, &plan)
 	resp.Diagnostics.Append(getPlanDiags...)
