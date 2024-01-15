@@ -1,0 +1,352 @@
+package api
+
+import (
+	"errors"
+	"fmt"
+	"strings"
+)
+
+// RecordType is an enumeration of possible DNS record types
+type RecordType int
+
+// RecordFactory is a factory method for creating new DomainRecords
+type RecordFactory func(string) (*DomainRecord, error)
+
+const (
+	// A is an address record type
+	A RecordType = iota
+	// AAAA is an IPv6 address record type
+	AAAA
+	// CAA is a Certificate Authority record type
+	CAA
+	// CNAME is a Canonical record name (alias) type
+	CNAME
+	// MX is a mail exchange record type
+	MX
+	// NS is a name server record type
+	NS
+	// SOA is a start of authority record type
+	SOA
+	// SRV is a service locator type
+	SRV
+	// TXT is a text record type
+	TXT
+)
+
+func (rt RecordType) String() string {
+	switch rt {
+	case A:
+		return AType
+	case AAAA:
+		return AAAAType
+	case CAA:
+		return CAAType
+	case CNAME:
+		return CNameType
+	case MX:
+		return MXType
+	case NS:
+		return NSType
+	case SOA:
+		return SOAType
+	case SRV:
+		return SRVType
+	case TXT:
+		return TXTType
+	}
+	return ""
+}
+
+const (
+	DefaultTTL      = 3600
+	DefaultPriority = 0
+	DefaultWeight   = 0
+	DefaultPort     = 0
+
+	StatusActive    = "ACTIVE"
+	StatusCancelled = "CANCELLED"
+
+	Ptr       = "@"
+	AType     = "A"
+	AAAAType  = "AAAA"
+	CAAType   = "CAA"
+	CNameType = "CNAME"
+	MXType    = "MX"
+	NSType    = "NS"
+	SOAType   = "SOA"
+	SRVType   = "SRV"
+	TXTType   = "TXT"
+)
+
+var supportedTypes = map[string]struct{}{
+	AType:     {},
+	AAAAType:  {},
+	CAAType:   {},
+	CNameType: {},
+	MXType:    {},
+	NSType:    {},
+	SOAType:   {},
+	SRVType:   {},
+	TXTType:   {},
+}
+
+type NameServers struct {
+	NameServers []string `json:"nameServers"`
+}
+
+// Domain encapsulates a domain resource
+type Domain struct {
+	ID      int64  `json:"domainId"`
+	Name    string `json:"domain"`
+	Status  string `json:"status"`
+	Expires string `json:"expires"`
+}
+
+// DomainRecord encapsulates a domain record resource
+type DomainRecord struct {
+	Type     string `json:"type,omitempty"`
+	Name     string `json:"name"`
+	Data     string `json:"data"`
+	Priority int    `json:"priority"`
+	TTL      int    `json:"ttl"`
+	Service  string `json:"service,omitempty"`
+	Protocol string `json:"protocol,omitempty"`
+	Weight   int    `json:"weight"`
+	Port     *int   `json:"port,omitempty"`
+}
+
+type DomainAvailable struct {
+	Available  bool   `json:"available"`
+	Currency   string `json:"currency"`
+	Domain     string `json:"domain"`
+	Definitive bool   `json:"definitive"`
+	Price      int    `json:"price"`
+}
+
+type AvailableResp struct {
+	DomainAvailable []DomainAvailable `json:"domains"`
+}
+
+type AgreementsResp struct {
+	AgreementKey string `json:"agreementKey"`
+	Content      string `json:"content"`
+	Title        string `json:"title"`
+	Url          string `json:"url"`
+}
+
+// DomainRecordOpt provides support for setting optional parameters
+type DomainRecordOpt func(*DomainRecord) error
+
+type DomainPurchaseResponse struct {
+	Currency  string `json:"currency"`
+	ItemCount int    `json:"itemCount"`
+	OrderId   int    `json:"orderId"`
+	Total     int    `json:"total"`
+}
+
+type DomainRenew struct {
+	Period int `json:"period"`
+}
+
+type Contact struct {
+	AddressMailing struct {
+		Address1   string `json:"address1"`
+		Address2   string `json:"address2"`
+		City       string `json:"city"`
+		Country    string `json:"country"`
+		PostalCode string `json:"postalCode"`
+		State      string `json:"state"`
+	} `json:"addressMailing"`
+	Email        string `json:"email"`
+	Fax          string `json:"fax"`
+	JobTitle     string `json:"jobTitle"`
+	NameFirst    string `json:"nameFirst"`
+	NameLast     string `json:"nameLast"`
+	NameMiddle   string `json:"nameMiddle"`
+	Organization string `json:"organization"`
+	Phone        string `json:"phone"`
+}
+
+type RegisterDomainInfo struct {
+	Consent struct {
+		AgreedAt      string   `json:"agreedAt"`
+		AgreedBy      string   `json:"agreedBy"`
+		AgreementKeys []string `json:"agreementKeys"`
+	} `json:"consent"`
+	ContactAdmin      Contact  `json:"contactAdmin"`
+	ContactBilling    Contact  `json:"contactBilling"`
+	ContactRegistrant Contact  `json:"contactRegistrant"`
+	ContactTech       Contact  `json:"contactTech"`
+	Domain            string   `json:"domain"`
+	NameServers       []string `json:"nameServers"`
+	Period            int      `json:"period"`
+	Privacy           bool     `json:"privacy"`
+	RenewAuto         bool     `json:"renewAuto"`
+}
+
+// NewDomainRecord validates and constructs a DomainRecord, if valid.
+func NewDomainRecord(name, t, data string, ttl int, opts ...DomainRecordOpt) (*DomainRecord, error) {
+	name = strings.TrimSpace(name)
+	data = strings.TrimSpace(data)
+	if err := ValidateData(t, data); err != nil {
+		return nil, err
+	}
+
+	parts := strings.Split(name, ".")
+	if len(parts) < 1 || len(parts) > 255 {
+		return nil, errors.New("name must be between 1..255 octets")
+	}
+	for _, part := range parts {
+		if len(part) > 63 {
+			return nil, errors.New("invalid domain name. name octets should be less than 63 characters")
+		}
+	}
+
+	if ttl < 0 {
+		return nil, errors.New("ttl must be a positive value")
+	}
+	if !IsSupportedType(t) {
+		var types []string
+		for t := range supportedTypes {
+			types = append(types, t)
+		}
+		return nil, fmt.Errorf("type must be one of: %s", types)
+	}
+	dr := &DomainRecord{
+		Name: name,
+		Type: t,
+		Data: data,
+		TTL:  ttl,
+	}
+	for _, opt := range opts {
+		if err := opt(dr); err != nil {
+			return nil, err
+		}
+	}
+	return dr, nil
+}
+
+func Priority(priority int) DomainRecordOpt {
+	return func(rec *DomainRecord) error {
+		if err := ValidatePriority(priority); err != nil {
+			return err
+		}
+		rec.Priority = priority
+		return nil
+	}
+}
+
+func Weight(weight int) DomainRecordOpt {
+	return func(rec *DomainRecord) error {
+		if err := ValidateWeight(weight); err != nil {
+			return err
+		}
+		rec.Weight = weight
+		return nil
+	}
+}
+
+func Port(port int) DomainRecordOpt {
+	return func(rec *DomainRecord) error {
+		if port == 0 {
+			return nil
+		}
+		if err := ValidatePort(port); err != nil {
+			return err
+		}
+		rec.Port = &port
+		return nil
+	}
+}
+
+func Service(service string) DomainRecordOpt {
+	return func(rec *DomainRecord) error {
+		if strings.TrimSpace(service) != "" && !strings.HasPrefix(service, "_") {
+			return errors.New("service must start with an underscore (e.g. _ldap)")
+		}
+		rec.Service = service
+		return nil
+	}
+}
+
+func Protocol(proto string) DomainRecordOpt {
+	return func(rec *DomainRecord) error {
+		if strings.TrimSpace(proto) != "" && !strings.HasPrefix(proto, "_") {
+			return errors.New("protocol must start with an underscore (e.g. _tcp)")
+		}
+		rec.Protocol = proto
+		return nil
+	}
+}
+
+// NewNSRecord constructs a nameserver record from the supplied data
+func NewNSRecord(data string) (*DomainRecord, error) {
+	return NewDomainRecord(Ptr, NSType, data, DefaultTTL)
+}
+
+// NewARecord constructs a new address record from the supplied data
+func NewARecord(data string) (*DomainRecord, error) {
+	return NewDomainRecord(Ptr, AType, data, DefaultTTL)
+}
+
+// ValidateData performs bounds checking on a data element
+func ValidateData(t, data string) error {
+	switch t {
+	case SRVType:
+		return nil
+	case TXTType:
+		if len(data) < 0 || len(data) > 512 {
+			return errors.New("TXT data must be between 0..512 characters in length")
+		}
+	default:
+		if len(data) < 0 || len(data) > 255 {
+			return errors.New("data must be between 0..255 characters in length")
+		}
+	}
+	return nil
+}
+
+// ValidatePriority performs bounds checking on priority element
+func ValidatePriority(priority int) error {
+	if priority < 0 || priority > 65535 {
+		return errors.New("priority must be between 0..65535 (16 bit)")
+	}
+	return nil
+}
+
+func ValidateWeight(weight int) error {
+	if weight < 0 || weight > 100 {
+		return errors.New("weight must be between 0..100")
+	}
+	return nil
+}
+
+func ValidatePort(port int) error {
+	if port < 1 || port > 65535 {
+		return errors.New("port must be between 1..65535")
+	}
+	return nil
+}
+
+// IsDefaultARecord is a predicate to place fetched A domain records into the appropriate bucket
+func IsDefaultARecord(record *DomainRecord) bool {
+	return record.Name == Ptr && record.Type == AType && record.TTL == DefaultTTL
+}
+
+// IsDefaultNSRecord is a predicate to place fetched NS domain records into the appropriate bucket
+func IsDefaultNSRecord(record *DomainRecord) bool {
+	return record.Name == Ptr && record.Type == NSType && record.TTL == DefaultTTL
+}
+
+// IsDisallowed prevents empty NS|SOA record lists from being propagated, which is disallowed
+func IsDisallowed(t string, records []*DomainRecord) bool {
+	return len(records) == 0 && strings.EqualFold(t, NSType) || strings.EqualFold(t, SOAType) || strings.EqualFold(t, CAAType)
+}
+
+// IsSupportedType is a predicate used to filter supported domain types
+func IsSupportedType(recType string) bool {
+	if _, ok := supportedTypes[recType]; ok {
+		return true
+	}
+	return false
+}
